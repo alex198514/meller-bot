@@ -82,11 +82,17 @@ const sgn = (x, d = 2) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
 const cls = (x) => (x >= 0 ? "up" : "down");
 const N = (text, extra = "") => `<span class="num ${extra}">${text}</span>`;   // every number goes through here
 
-/** A stable colour per coin for its round badge. */
-function badge(sym, coin) {
+/** Coin icons shipped in icons/ (cryptocurrency-icons 0.18.1, CC0): lowercase ticker = symbol without "USDT". */
+const ICONS = new Set("btc eth sol bnb xrp ada doge link ltc avax dot trx atom xlm aave uni zec bch ankr ape chz comp dash enj fil gmt grt icp iost lpt lsk mana neo ong sand stx uma vet zrx 1inch".split(" "));
+const ticker = (sym) => sym.replace(/USDT$/, "").toLowerCase();
+
+/** The coin's round icon, or a letter badge on a stable colour derived from the symbol. size: "sm" (28px) or "lg" (40px). */
+function badge(sym, coin, size = "sm") {
+  const tk = ticker(sym);
+  if (ICONS.has(tk)) return `<img class="cbadge cicon ${size}" src="icons/${tk}.svg" alt="" width="40" height="40" loading="lazy">`;
   let h = 0;
   for (const c of sym) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return `<span class="cbadge" style="background:linear-gradient(135deg,hsl(${h},62%,52%),hsl(${(h + 30) % 360},62%,38%))">${esc(coin[0])}</span>`;
+  return `<span class="cbadge ${size}" style="background:linear-gradient(135deg,hsl(${h},62%,52%),hsl(${(h + 30) % 360},62%,38%))">${esc(coin[0])}</span>`;
 }
 
 const TOP_N = 10;
@@ -237,7 +243,7 @@ function renderHero(sym, L) {
   const opts = S.data.symbols.slice().sort((a, b) => a.coin.localeCompare(b.coin))
     .map((x) => `<option value="${esc(x.symbol)}"${x.symbol === sym ? " selected" : ""}>${esc(x.coin)}</option>`).join("");
   $("sig-hero").innerHTML = `
-    <div class="hero-top">${badge(sym, s.coin)}
+    <div class="hero-top">${badge(sym, s.coin, "lg")}
       <label class="picker"><span class="cname">${esc(s.coin)}</span><span class="chev">▾</span>
         <select id="coin-select" aria-label="Coin">${opts}</select></label>
       <span class="schip ${L.open ? "long" : "wait"}">${esc(L.open ? t("chip_long") : t("chip_wait"))}</span></div>

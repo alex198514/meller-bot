@@ -110,10 +110,12 @@ main {
 .row:active { transform: scale(0.985); background: var(--card-2); }
 .l1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .cbadge {
-  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+  width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 15px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  font-weight: 800; font-size: 13px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
 }
+.cbadge.lg { width: 40px; height: 40px; font-size: 18px; }
+.cicon { display: block; object-fit: contain; background: rgba(255, 255, 255, 0.04); }   /* round, never stretched */
 .cname { font-weight: 800; font-size: 17px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .vbadge { font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 6px; background: var(--blue); color: #fff; flex: 0 0 auto; }
 .chg { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 999px; flex: 0 0 auto; }
@@ -139,7 +141,6 @@ main {
 /* ---------- Сигнал ---------- */
 .hero { padding: 14px; margin-bottom: 12px; }
 .hero-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.hero-top .cbadge { width: 40px; height: 40px; font-size: 18px; }
 .picker { position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .picker .cname { font-size: 20px; }
 .picker .chev { color: var(--muted); font-size: 13px; }
@@ -190,7 +191,6 @@ main {
 }
 @media (max-width: 340px) {
   .l1 { gap: 7px; }
-  .l1 .cbadge { width: 28px; height: 28px; font-size: 13px; }
   .l1 .cname { font-size: 16px; }
   .l1 .chg { font-size: 11px; padding: 2px 5px; }
   .l1 .price { font-size: 15px; }
@@ -243,7 +243,6 @@ main {
 .hint { color: var(--muted); font-size: 13px; margin: 6px 2px; }
 .history { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
 .history li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
-.history .cbadge { width: 30px; height: 30px; font-size: 13px; }
 .history .what { flex: 1 1 auto; min-width: 0; }
 .history .act { font-weight: 700; font-size: 15px; white-space: nowrap; }
 .history .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
