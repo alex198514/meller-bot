@@ -32,6 +32,11 @@
   --radius: 16px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   --tabbar: 70px;
+  /* safe areas divided by the desktop-mode zoom (set by the script in index.html), else they would be scaled up */
+  --sa-t: calc(env(safe-area-inset-top, 0px) / var(--z, 1));
+  --sa-r: calc(env(safe-area-inset-right, 0px) / var(--z, 1));
+  --sa-b: calc(env(safe-area-inset-bottom, 0px) / var(--z, 1));
+  --sa-l: calc(env(safe-area-inset-left, 0px) / var(--z, 1));
   --side: 14px;
   color-scheme: dark;
 }
@@ -69,7 +74,7 @@ button, input, select { font: inherit; color: inherit; }
 .top {
   position: sticky; top: 0; z-index: 5; width: 100%;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: calc(7px + env(safe-area-inset-top)) calc(var(--side) + env(safe-area-inset-right)) 7px calc(var(--side) + env(safe-area-inset-left));
+  padding: calc(7px + var(--sa-t)) calc(var(--side) + var(--sa-r)) 7px calc(var(--side) + var(--sa-l));
   background: rgba(10, 15, 30, 0.92);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
@@ -93,14 +98,14 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--card); border: 1px solid var(--line-2); border-radius: 10px;
   padding: 6px 9px; font-size: 13px; font-weight: 800; cursor: pointer; flex: 0 0 auto;
 }
-@media (max-width: 400px) { .pill .word { display: none; } }
+html.lt400 .pill .word { display: none; }   /* width classes come from the script in index.html */
 
 /* ---------- layout ---------- */
 main {
   width: 100%;
-  padding: 12px calc(var(--side) + env(safe-area-inset-right)) calc(var(--tabbar) + env(safe-area-inset-bottom) + 12px) calc(var(--side) + env(safe-area-inset-left));
+  padding: 12px calc(var(--side) + var(--sa-r)) calc(var(--tabbar) + var(--sa-b) + 12px) calc(var(--side) + var(--sa-l));
 }
-@media (min-width: 640px) { main { max-width: 600px; margin: 0 auto; } }
+html.ge640 main { max-width: 600px; margin: 0 auto; }
 .tab { min-width: 0; animation: fade .18s ease-out; }
 @keyframes fade { from { opacity: .3; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
@@ -205,17 +210,14 @@ main {
 .tps.stack { grid-template-columns: minmax(0, 1fr); }
 .tps.stack .tp { display: flex; align-items: baseline; gap: 10px; }
 .tps.stack .tp .k { flex: 1 1 auto; }
-@media (max-width: 359px) {
-  .tps { grid-template-columns: minmax(0, 1fr); }
-  .tp { display: flex; align-items: baseline; gap: 10px; }
-  .tp .k { flex: 1 1 auto; }
-}
-@media (max-width: 360px) {          /* font sizes are stepped down in JS (fitAll) where a line would not fit */
-  .l1 { gap: 8px; }
-  .dist { flex-basis: 128px; }
-  .ladder svg.links { width: 34px; }
-  .lrow { left: 34px; padding: 0 8px; gap: 6px; }
-}
+html.lt360 .tps { grid-template-columns: minmax(0, 1fr); }
+html.lt360 .tp { display: flex; align-items: baseline; gap: 10px; }
+html.lt360 .tp .k { flex: 1 1 auto; }
+/* <= 360px: font sizes are stepped down in JS (fitAll) where a line would not fit */
+html.le360 .l1 { gap: 8px; }
+html.le360 .dist { flex-basis: 128px; }
+html.le360 .ladder svg.links { width: 34px; }
+html.le360 .lrow { left: 34px; padding: 0 8px; gap: 6px; }
 .sentence { font-size: 17px; font-weight: 600; color: var(--text); margin: 12px 2px; }
 .chart-card { padding: 0; overflow: hidden; margin-bottom: 8px; }
 .chart { position: relative; width: 100%; height: 340px; overflow: hidden; }
@@ -285,8 +287,8 @@ main {
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; width: 100%;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  height: calc(var(--tabbar) + env(safe-area-inset-bottom));
-  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  height: calc(var(--tabbar) + var(--sa-b));
+  padding: 0 var(--sa-r) var(--sa-b) var(--sa-l);
   background: rgba(15, 22, 42, 0.94);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-top: 1px solid var(--line-2);
@@ -307,7 +309,7 @@ main {
 
 /* ?debug=1 overlay */
 .debug {
-  position: fixed; top: calc(70px + env(safe-area-inset-top)); left: 8px; right: 8px; z-index: 50;
+  position: fixed; top: calc(70px + var(--sa-t)); left: 8px; right: 8px; z-index: 50;
   font: 12px/1.45 ui-monospace, Menlo, monospace; color: #e6ffe9; background: rgba(0, 0, 0, 0.85);
   border: 1px solid var(--green); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all;
   pointer-events: none;

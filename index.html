@@ -3,17 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script>
+    /* Safari "desktop website" mode on a phone lays the page out ~980px wide, so everything is tiny.
+       Zoom the page so its layout width equals the phone's width again (before the first paint), and set
+       width classes on <html>: CSS width media queries keep seeing 980px under zoom. */
+    (function () {
+      var d = document.documentElement, last = 0;
+      function apply() {
+        var land = window.matchMedia && matchMedia("(orientation: landscape)").matches;
+        var phone = land ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+        var iw = window.innerWidth;                      // unaffected by the zoom below: no feedback loop
+        var z = phone > 0 && iw > phone * 1.2 ? iw / phone : 1;
+        d.style.zoom = z === 1 ? "" : String(z);
+        d.style.setProperty("--z", String(z));
+        var w = iw / z;                                  // the effective layout width
+        d.classList.toggle("lt400", w <= 400);
+        d.classList.toggle("le360", w <= 360);
+        d.classList.toggle("lt360", w < 360);
+        d.classList.toggle("ge640", w >= 640);
+        window.__mb = { zoom: z, width: w };
+        if (last && z !== last) window.dispatchEvent(new Event("mb-zoom"));   // charts re-measure
+        last = z;
+      }
+      apply();
+      window.addEventListener("resize", apply);
+      window.addEventListener("orientationchange", function () { setTimeout(apply, 150); });
+    })();
+  </script>
   <meta name="theme-color" content="#0a0f1e">
   <meta name="description" content="Meller Bot: daily 20-day breakout signals on 75 crypto coins, paper trading and prop challenge progress.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Meller Bot">
-  <link rel="manifest" href="manifest.json?v=8">
+  <link rel="manifest" href="manifest.json?v=9">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>Meller Bot</title>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -101,6 +128,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

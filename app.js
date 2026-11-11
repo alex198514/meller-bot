@@ -502,6 +502,8 @@ function fitAll() {
   }
 }
 window.addEventListener("resize", () => fitAll());
+// desktop-mode zoom changed (index.html): rebuild the charts at the new size and re-fit the lines
+window.addEventListener("mb-zoom", () => { destroyCharts(); render(); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitAll());   // Manrope changes the widths
 
 /* ---------- navigation ---------- */
@@ -601,6 +603,7 @@ function debugOverlay() {
       `innerWidth × innerHeight: ${window.innerWidth} × ${window.innerHeight}`,
       `screen.width × height: ${screen.width} × ${screen.height}`,
       `devicePixelRatio: ${window.devicePixelRatio}`,
+      `zoom (desktop-mode fix): ${window.__mb ? window.__mb.zoom.toFixed(3) : "n/a"}  effective width: ${window.__mb ? Math.round(window.__mb.width) : "n/a"}`,
       `visualViewport.scale: ${vv ? vv.scale : "n/a"}  (width ${vv ? Math.round(vv.width) : "n/a"})`,
       `display-mode standalone: ${matchMedia("(display-mode: standalone)").matches}`,
       `navigator.standalone: ${navigator.standalone}`,
