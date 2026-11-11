@@ -2,7 +2,7 @@
   "name": "Meller Bot",
   "short_name": "Meller Bot",
   "description": "Daily 20-day breakout signals on 75 coins, paper trading and prop challenge progress.",
-  "start_url": "./",
+  "start_url": "./?app=1",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

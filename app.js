@@ -433,4 +433,32 @@ $("near-info").addEventListener("click", (e) => {
   e.currentTarget.setAttribute("aria-expanded", String(open));
 });
 
+/* ?debug=1: what iOS really gives the page (viewport size, zoom, standalone mode) */
+function debugOverlay() {
+  if (!new URLSearchParams(location.search).has("debug")) return;
+  const box = document.createElement("div");
+  box.className = "debug";
+  document.body.appendChild(box);
+  const meta = document.querySelector('meta[name="viewport"]');
+  const update = () => {
+    const vv = window.visualViewport;
+    box.textContent = [
+      `innerWidth × innerHeight: ${window.innerWidth} × ${window.innerHeight}`,
+      `screen.width × height: ${screen.width} × ${screen.height}`,
+      `devicePixelRatio: ${window.devicePixelRatio}`,
+      `visualViewport.scale: ${vv ? vv.scale : "n/a"}  (width ${vv ? Math.round(vv.width) : "n/a"})`,
+      `display-mode standalone: ${matchMedia("(display-mode: standalone)").matches}`,
+      `navigator.standalone: ${navigator.standalone}`,
+      `documentElement.clientWidth: ${document.documentElement.clientWidth}  scrollWidth: ${document.documentElement.scrollWidth}`,
+      `viewport meta: ${meta ? meta.content : "MISSING"}`,
+      `url: ${location.pathname}${location.search}`,
+    ].join("\n");
+  };
+  update();
+  window.addEventListener("resize", update);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", update);
+  setInterval(update, 1000);
+}
+
+debugOverlay();
 init();
