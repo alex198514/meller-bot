@@ -253,7 +253,7 @@ function renderHero(sym, L) {
 
 /** Vertical ladder: TP2, TP1, entry, the current price, stop at true scale; the label rows are pushed apart. */
 function renderLadder(sym, L) {
-  const now = price(sym), H = 270, PAD = 16, GAP = 34;
+  const now = price(sym), H = 330, PAD = 22, GAP = 46;
   const items = [
     { k: "tp2", name: "TP2", p: L.tp2, col: "#22d38a" },
     { k: "tp1", name: "TP1", p: L.tp1, col: "#22d38a" },
@@ -304,6 +304,7 @@ async function renderSignal() {
   renderHero(sym, L);
   renderLadder(sym, L);
   renderTps(L);
+  fitAll();
   $("sig-status").textContent = L.open
     ? t("in_pos", { v: L.p.variant, date: L.p.entry_date, r: sgn(liveR(L.p, price(sym))) + "R", stop: fmt(L.p.stop) })
     : d <= 0 ? t("above_now", { lvl: fmt(s.level) }) : t("wait", { lvl: fmt(s.level), d: d.toFixed(1) });
@@ -406,6 +407,47 @@ function renderChallenge() {
     </li>`).join("") : `<li class="card"><span class="when">${esc(t("no_history"))}</span></li>`;
 }
 
+/* ---------- fitting: one-line rows step their fonts down instead of cutting a number ---------- */
+
+/** [line selector, items that may shrink (":scope" = the line itself), smallest font in px] */
+const FIT = [
+  [".l1", [".price", ".cname", ".chg"], 12],
+  [".dist .lbl", [":scope"], 11],
+  [".hero-top", [".cname", ".schip"], 12],
+  [".hero-price", [".big"], 20],
+  [".lrow", [".lp", ".name", ".lpc"], 11],
+  [".tp", [".v", ".p", ".k"], 11],
+  [".kv .v", [".num"], 12],
+  [".pnl", [".r", ".usd"], 14],
+  [".ceq", [".big", ".pct"], 14],
+  [".meter .line", [".val", ".lab"], 11],
+  [".history li", [".act", ".res", ".when"], 11],
+  [".phead", [".cname", ".since"], 11],
+  [".chead", [".name", ".meta"], 11],
+];
+
+/** While a line is wider than its box, take 1px off its largest shrinkable font (down to the minimum). */
+function fitAll() {
+  for (const [boxSel, itemSels, min] of FIT) {
+    for (const box of document.querySelectorAll(boxSel)) {
+      if (!box.getClientRects().length) continue;                  // hidden tab
+      const items = itemSels.flatMap((sel) => (sel === ":scope" ? [box] : [...box.querySelectorAll(sel)]));
+      items.forEach((el) => { el.style.fontSize = ""; });
+      for (let guard = 0; box.scrollWidth > box.clientWidth + 0.5 && guard < 80; guard++) {
+        let best = null, size = 0;
+        for (const el of items) {
+          const fs = parseFloat(getComputedStyle(el).fontSize);
+          if (fs > min && fs > size) { best = el; size = fs; }
+        }
+        if (!best) break;
+        best.style.fontSize = size - 1 + "px";
+      }
+    }
+  }
+}
+window.addEventListener("resize", () => fitAll());
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitAll());   // Manrope changes the widths
+
 /* ---------- navigation ---------- */
 
 function destroyCharts() {
@@ -429,6 +471,7 @@ function render() {
   if (S.tab === "signal") renderSignal();
   if (S.tab === "positions") renderPositions();
   if (S.tab === "challenge") renderChallenge();
+  fitAll();
 }
 
 function openCoin(sym) { S.coin = sym; show("signal"); }
@@ -469,13 +512,13 @@ $("positions").addEventListener("click", (e) => {
   const card = e.target.closest(".pcard[data-sym]");
   if (card) openCoin(card.dataset.sym);
 });
-$("search").addEventListener("input", (e) => { S.query = e.target.value; renderMarket(); });
+$("search").addEventListener("input", (e) => { S.query = e.target.value; renderMarket(); fitAll(); });
 $("lang").addEventListener("click", () => {
   S.lang = S.lang === "ru" ? "en" : "ru";
   storeSet("lang", S.lang);
   render();
 });
-$("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); });
+$("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); fitAll(); });
 $("near-info").addEventListener("click", (e) => {
   const open = $("near-explain").hidden;
   $("near-explain").hidden = !open;
