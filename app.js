@@ -4,7 +4,11 @@
 const I18N = {
   ru: {
     tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_challenge: "Челлендж",
-    search: "Поиск монеты", sorted: "Сортировка: ближе всего к пробою 20-дневного максимума",
+    search: "Поиск монеты", near_title: "Ближе к пробою",
+    near_explain: "Монеты отсортированы по расстоянию до 20-дневного максимума. Сигнал LONG появляется, когда " +
+      "дневная свеча (закрытие в 00:00 UTC) закрывается выше этого уровня. Полная полоса — цена у уровня, " +
+      "пустая — 20% и дальше.",
+    show_all: "Показать все {n}", show_top: "Показать только топ-10",
     live: "живые цены Binance", data_at: "данные на {t}", to_breakout: "до пробоя", above: "выше уровня",
     bull: "бычий", bear: "медвежий", side: "боковик", nodata: "нет данных",
     entry: "Вход", stop: "Стоп", take: "Тейк", trailing: "трейлинг", plan: "план, если будет пробой",
@@ -23,7 +27,11 @@ const I18N = {
   },
   en: {
     tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_challenge: "Challenge",
-    search: "Search coin", sorted: "Sorted by distance to the 20-day-high breakout",
+    search: "Search coin", near_title: "Closest to a breakout",
+    near_explain: "Coins are sorted by their distance to the 20-day high. A LONG signal comes when a daily " +
+      "candle (close at 00:00 UTC) closes above that level. A full bar means the price is at the level, an " +
+      "empty one 20% or more away.",
+    show_all: "Show all {n}", show_top: "Show top 10 only",
     live: "live Binance prices", data_at: "data as of {t}", to_breakout: "to breakout", above: "above level",
     bull: "bull", bear: "bear", side: "sideways", nodata: "no data",
     entry: "Entry", stop: "Stop", take: "Take", trailing: "trailing", plan: "plan if it breaks out",
@@ -46,7 +54,7 @@ const S = {
   data: null, live: {}, liveOk: false, liveAt: null,
   lang: (new URLSearchParams(location.search).get("lang") || localStorage_get("lang") ||
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
-  tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null,
+  tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
 };
 
 function localStorage_get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -64,6 +72,15 @@ function fmt(p) {
 }
 const sgn = (x, d = 2) => (x >= 0 ? "+" : "") + x.toFixed(d);
 const cls = (x) => (x >= 0 ? "up" : "down");
+
+const TOP_N = 10;
+const CHART_THEME = () => ({
+  autoSize: true,                                   // sized from its container: never wider than the screen
+  layout: { background: { type: "solid", color: "#1c2230" }, textColor: "#aab3c2", fontSize: 11 },
+  grid: { vertLines: { color: "#262e3e" }, horzLines: { color: "#262e3e" } },
+  rightPriceScale: { borderColor: "#2a3242" }, timeScale: { borderColor: "#2a3242" },
+  localization: { locale: S.lang === "ru" ? "ru-RU" : "en-US" },
+});
 
 /* ---------- data ---------- */
 
@@ -150,29 +167,34 @@ function sparkline(sym) {
   const pts = s.closes.slice();
   if (S.live[sym]) pts.push(S.live[sym].price);
   const lo = Math.min(...pts, s.level), hi = Math.max(...pts, s.level);
-  const w = 84, h = 30, k = (v) => h - 2 - ((v - lo) / (hi - lo || 1)) * (h - 4);
+  const w = 72, h = 30, k = (v) => h - 2 - ((v - lo) / (hi - lo || 1)) * (h - 4);
   const line = pts.map((v, i) => `${((i / (pts.length - 1)) * w).toFixed(1)},${k(v).toFixed(1)}`).join(" ");
   const up = pts[pts.length - 1] >= pts[0];
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-    <line x1="0" x2="${w}" y1="${k(s.level)}" y2="${k(s.level)}" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3 3"/>
-    <polyline points="${line}" fill="none" stroke="${up ? "#2ecc71" : "#f85149"}" stroke-width="1.6"/></svg>`;
+    <line x1="0" x2="${w}" y1="${k(s.level)}" y2="${k(s.level)}" stroke="#5aa9ff" stroke-width="1" stroke-dasharray="3 3"/>
+    <polyline points="${line}" fill="none" stroke="${up ? "#2ecc71" : "#ff5c57"}" stroke-width="1.6"/></svg>`;
 }
 
 function renderMarket() {
   $("search").placeholder = t("search");
-  $("market-hint").textContent = t("sorted");
+  $("near-title").textContent = t("near_title");
+  $("near-explain").textContent = t("near_explain");
   const q = S.query.trim().toUpperCase();
-  const rows = S.data.symbols
+  const all = S.data.symbols
     .filter((s) => !q || s.coin.includes(q) || s.symbol.includes(q))
     .map((s) => ({ s, d: dist(s.symbol) }))
     .sort((a, b) => a.d - b.d);
+  const rows = q || S.showAll ? all : all.slice(0, TOP_N);       // a search always shows every match
+  const more = $("more");
+  more.hidden = !!q || all.length <= TOP_N;
+  more.textContent = S.showAll ? t("show_top") : t("show_all", { n: all.length });
   $("coins").innerHTML = rows.map(({ s, d }) => {
     const ch = change(s.symbol), pos = posOf(s.symbol);
     const near = d <= S.data.rules.near_pct, mid = d <= 10;
     const lbl = d <= 0 ? `<b>${esc(t("above"))}</b>` : `${esc(t("to_breakout"))} <b>${d.toFixed(1)}%</b>`;
     return `<li class="row" data-sym="${esc(s.symbol)}">
       <div><div class="coin">${esc(s.coin)}${pos ? `<span class="badge">${esc(pos.variant)}</span>` : ""}</div>
-        <div class="px">${fmt(price(s.symbol))} ${ch == null ? "" : `<span class="pct ${cls(ch)}">${sgn(ch)}%</span>`}</div></div>
+        <div class="px">${fmt(price(s.symbol))}</div>${ch == null ? "" : `<div class="ch pct ${cls(ch)}">${sgn(ch)}%</div>`}</div>
       ${sparkline(s.symbol)}
       <div class="dist"><div class="lbl ${near ? "near" : ""}">${lbl}</div>
         <div class="bar ${near ? "near" : mid ? "mid" : ""}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div></div>
@@ -232,28 +254,22 @@ async function renderSignal() {
   $("sig-change").className = "pct " + (ch == null ? "" : cls(ch));
   renderSignalBox(sym);
   const rows = await loadKlines(sym);
-  if (S.coin !== sym || typeof LightweightCharts === "undefined") return;
+  // only while the Signal tab is on screen: a chart built in a hidden tab has no width to size from
+  if (S.coin !== sym || S.tab !== "signal" || typeof LightweightCharts === "undefined") return;
   const el = $("chart");
-  if (S.chart) S.chart.remove();
-  S.chart = LightweightCharts.createChart(el, {
-    width: el.clientWidth, height: el.clientHeight,
-    layout: { background: { type: "solid", color: "#161b22" }, textColor: "#8b949e", fontSize: 11 },
-    grid: { vertLines: { color: "#1f262e" }, horzLines: { color: "#1f262e" } },
-    rightPriceScale: { borderColor: "#283039" }, timeScale: { borderColor: "#283039" },
-    crosshair: { mode: 0 }, handleScale: true, handleScroll: true,
-    localization: { locale: S.lang === "ru" ? "ru-RU" : "en-US" },
-  });
+  destroyCharts();
+  S.chart = LightweightCharts.createChart(el, { ...CHART_THEME(), crosshair: { mode: 0 } });
   const series = S.chart.addCandlestickSeries({
-    upColor: "#2ecc71", downColor: "#f85149", borderVisible: false, wickUpColor: "#2ecc71", wickDownColor: "#f85149",
+    upColor: "#2ecc71", downColor: "#ff5c57", borderVisible: false, wickUpColor: "#2ecc71", wickDownColor: "#ff5c57",
     priceFormat: { type: "custom", formatter: (p) => fmt(p).slice(1), minMove: 1e-9 },
   });
   series.setData(rows);
   const line = (p, color, title, style = 2) => series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
-  line(S.bySym[sym].level, "#58a6ff", t("level"), 1);
+  line(S.bySym[sym].level, "#5aa9ff", t("level"), 1);
   const L = levelsFor(sym);
   if (L.open) {
-    line(L.entry, "#e6edf3", t("entry"));
-    line(L.stop, "#f85149", t("stop"));
+    line(L.entry, "#f2f4f8", t("entry"));
+    line(L.stop, "#ff5c57", t("stop"));
     line(L.tp1, "#2ecc71", "TP1");
     line(L.tp2, "#2ecc71", "TP2");
   }
@@ -319,16 +335,10 @@ function renderChallenge() {
   const enough = chs.some((c) => c.curve.length >= 2);
   $("curve-hint").textContent = enough ? "" : t("curve_hint");
   el.hidden = !enough;
-  if (S.curveChart) { S.curveChart.remove(); S.curveChart = null; }
-  if (enough && typeof LightweightCharts !== "undefined") {
-    S.curveChart = LightweightCharts.createChart(el, {
-      width: el.clientWidth, height: el.clientHeight,
-      layout: { background: { type: "solid", color: "#161b22" }, textColor: "#8b949e", fontSize: 11 },
-      grid: { vertLines: { color: "#1f262e" }, horzLines: { color: "#1f262e" } },
-      rightPriceScale: { borderColor: "#283039" }, timeScale: { borderColor: "#283039" },
-      localization: { locale: S.lang === "ru" ? "ru-RU" : "en-US" },
-    });
-    const colors = { A: "#58a6ff", B: "#2ecc71" };
+  destroyCharts();
+  if (enough && S.tab === "challenge" && typeof LightweightCharts !== "undefined") {
+    S.curveChart = LightweightCharts.createChart(el, CHART_THEME());
+    const colors = { A: "#5aa9ff", B: "#2ecc71" };
     chs.forEach((c) => {
       if (c.curve.length < 2) return;
       const s = S.curveChart.addLineSeries({ color: colors[c.name] || "#e6edf3", lineWidth: 2, title: c.name });
@@ -348,7 +358,13 @@ function renderChallenge() {
 
 /* ---------- navigation ---------- */
 
+function destroyCharts() {
+  if (S.chart) { S.chart.remove(); S.chart = null; }
+  if (S.curveChart) { S.curveChart.remove(); S.curveChart = null; }
+}
+
 function show(tab) {
+  if (tab !== S.tab) destroyCharts();
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -367,6 +383,14 @@ function render() {
 
 function openCoin(sym) { S.coin = sym; show("signal"); }
 
+/** Deep links: #signal/BTCUSDT, #challenge, ... Sets the coin; returns the tab named in the hash (or the current one). */
+function hashTab() {
+  const [tab, coin] = location.hash.slice(1).split("/");
+  if (coin && S.bySym[coin]) S.coin = coin;
+  return ["market", "signal", "positions", "challenge"].includes(tab) ? tab : S.tab;
+}
+window.addEventListener("hashchange", () => { if (S.data) show(hashTab()); });
+
 async function init() {
   $("status").textContent = t("loading");
   try {
@@ -377,10 +401,7 @@ async function init() {
   }
   S.coin = (S.data.positions[0] || {}).symbol ||
     S.data.symbols.slice().sort((a, b) => a.dist_pct - b.dist_pct)[0].symbol;
-  const [hashTab, hashCoin] = location.hash.slice(1).split("/");    // deep links: #signal/BTCUSDT, #challenge
-  if (hashCoin && S.bySym[hashCoin]) S.coin = hashCoin;
-  if (["market", "signal", "positions", "challenge"].includes(hashTab)) S.tab = hashTab;
-  show(S.tab);
+  show(hashTab());
   await loadLive();
   render();
   setInterval(async () => { await loadLive(); if (S.tab !== "signal") render(); else renderHeader(); }, 60 * 1000);
@@ -405,9 +426,11 @@ $("lang").addEventListener("click", () => {
   localStorage_set("lang", S.lang);
   render();
 });
-window.addEventListener("resize", () => {
-  if (S.chart) S.chart.applyOptions({ width: $("chart").clientWidth });
-  if (S.curveChart) S.curveChart.applyOptions({ width: $("curve").clientWidth });
+$("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); });
+$("near-info").addEventListener("click", (e) => {
+  const open = $("near-explain").hidden;
+  $("near-explain").hidden = !open;
+  e.currentTarget.setAttribute("aria-expanded", String(open));
 });
 
 init();

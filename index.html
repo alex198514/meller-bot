@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#121722">
   <meta name="description" content="Meller Bot: daily 20-day breakout signals on 75 crypto coins, paper trading and prop challenge progress.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -36,8 +36,13 @@
       <div class="search-wrap">
         <input id="search" type="search" autocomplete="off" spellcheck="false">
       </div>
-      <div class="hint" id="market-hint"></div>
+      <div class="list-head">
+        <h2 id="near-title"></h2>
+        <button class="info" id="near-info" type="button" aria-expanded="false" aria-controls="near-explain">i</button>
+      </div>
+      <p class="explain" id="near-explain" hidden></p>
       <ul class="list" id="coins"></ul>
+      <button class="more" id="more" type="button" hidden></button>
     </section>
 
     <section class="tab" id="tab-signal" hidden>
