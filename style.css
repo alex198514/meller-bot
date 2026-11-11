@@ -135,6 +135,7 @@ main {
   font-weight: 800; font-size: 13px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
 }
 .cbadge.lg { width: 40px; height: 40px; font-size: 18px; }
+.cbadge.xs { width: 20px; height: 20px; font-size: 11px; }
 .cicon { display: block; object-fit: contain; background: rgba(255, 255, 255, 0.04); }   /* round, never stretched */
 .cname { font-weight: 700; font-size: 20px; white-space: nowrap; flex: 0 0 auto; }   /* fitted in JS, never cut */
 .vbadge { font-size: 12px; font-weight: 800; padding: 2px 6px; border-radius: 6px; background: var(--blue); color: #fff; flex: 0 0 auto; }
@@ -262,12 +263,28 @@ main {
 .history .when { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .history .res { font-weight: 800; font-size: 18px; }
 
+/* ---------- Новости ---------- */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--line-2); }
+.seg button { border: 0; background: none; padding: 10px; border-radius: 10px; font-weight: 700; font-size: 16px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button.on { background: var(--card-2); color: var(--text); box-shadow: 0 1px 0 var(--line-2) inset; }
+.news { display: block; padding: 14px 16px; margin-bottom: 12px; color: inherit; text-decoration: none; transition: transform .08s ease, background-color .12s ease; }
+.news:active { transform: scale(0.985); background: var(--card-2); }
+.news.delist { border-color: rgba(255, 90, 106, 0.55); background: linear-gradient(180deg, rgba(255, 90, 106, 0.10), var(--card)); }
+.nmeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; color: var(--muted); font-weight: 600; }
+.nmeta .src { color: var(--blue); font-weight: 800; }
+.dlabel { margin-left: auto; color: var(--red); font-weight: 800; font-size: 13px; border: 1px solid rgba(255, 90, 106, 0.5); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.news.delist .ntitle { color: #ffd5da; }
+.ntitle { font-size: 17px; font-weight: 700; line-height: 1.35; margin-top: 6px; overflow-wrap: anywhere; }
+.nchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.nchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line-2); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.empty.small { padding: 20px 14px; }
+
 .foot { text-align: center; color: var(--muted); font-size: 13px; padding: 22px 8px 6px; }
 
 /* ---------- tab bar ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; width: 100%;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   height: calc(var(--tabbar) + env(safe-area-inset-bottom));
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: rgba(15, 22, 42, 0.94);
@@ -277,9 +294,10 @@ main {
 .tabbar button {
   background: none; border: 0; cursor: pointer; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  font-size: 13px; font-weight: 700; color: var(--muted);
+  font-size: 13px; font-weight: 700; color: var(--muted); padding: 0 1px;
 }
-.tabbar .ico { display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 32px; border-radius: 16px; transition: background-color .15s; }
+.tabbar button > span:last-child { white-space: nowrap; }
+.tabbar .ico { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 32px; border-radius: 16px; transition: background-color .15s; }
 .tabbar svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .tabbar svg .ln { fill: none; }
 .tabbar button.active { color: var(--green); }

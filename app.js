@@ -3,7 +3,10 @@
 
 const I18N = {
   ru: {
-    tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_challenge: "Челлендж",
+    tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_challenge: "Челлендж", tab_news: "Новости",
+    news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
+    news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
+    delisting: "⚠ делистинг", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} д назад", ago_now: "только что",
     search: "Поиск монеты", near_title: "Ближе к пробою",
     near_explain: "Монеты отсортированы по расстоянию до 20-дневного максимума. Сигнал LONG появляется, когда " +
       "дневная свеча (закрытие в 00:00 UTC) закрывается выше этого уровня. Полная полоса — цена у уровня, " +
@@ -27,7 +30,10 @@ const I18N = {
     loading: "загрузка…", load_fail: "Не удалось загрузить data.json",
   },
   en: {
-    tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_challenge: "Challenge",
+    tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_challenge: "Challenge", tab_news: "News",
+    news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
+    news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
+    delisting: "⚠ delisting", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", ago_now: "just now",
     search: "Search coin", near_title: "Closest to a breakout",
     near_explain: "Coins are sorted by their distance to the 20-day high. A LONG signal comes when a daily " +
       "candle (close at 00:00 UTC) closes above that level. A full bar means the price is at the level, an " +
@@ -57,6 +63,7 @@ const S = {
   lang: (new URLSearchParams(location.search).get("lang") || storeGet("lang") ||
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
   tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
+  news: null, newsFilter: "all",
 };
 
 function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -86,7 +93,7 @@ const N = (text, extra = "") => `<span class="num ${extra}">${text}</span>`;   /
 const ICONS = new Set("btc eth sol bnb xrp ada doge link ltc avax dot trx atom xlm aave uni zec bch ankr ape chz comp dash enj fil gmt grt icp iost lpt lsk mana neo ong sand stx uma vet zrx 1inch".split(" "));
 const ticker = (sym) => sym.replace(/USDT$/, "").toLowerCase();
 
-/** The coin's round icon, or a letter badge on a stable colour derived from the symbol. size: "sm" (28px) or "lg" (40px). */
+/** The coin's round icon, or a letter badge on a stable colour derived from the symbol. size: "xs" (20px), "sm" (28px), "lg" (40px). */
 function badge(sym, coin, size = "sm") {
   const tk = ticker(sym);
   if (ICONS.has(tk)) return `<img class="cbadge cicon ${size}" src="icons/${tk}.svg" alt="" width="40" height="40" loading="lazy">`;
@@ -144,6 +151,16 @@ async function loadKlines(sym) {
     } catch (e) { /* fall back below */ }
   }
   return S.bySym[sym].ohlc.map(([d, o, h, l, cl]) => ({ time: d, open: o, high: h, low: l, close: cl }));
+}
+
+async function loadNews() {
+  try {
+    const r = await fetch("news.json?" + Date.now(), { cache: "no-store" });
+    if (r.ok) {
+      S.news = await r.json();
+      S.news.items.sort((a, b) => Date.parse(b.published) - Date.parse(a.published));   // newest first, always
+    }
+  } catch (e) { /* no news: the tab says so */ }
 }
 
 const price = (sym) => (S.live[sym] ? S.live[sym].price : S.bySym[sym].last_close);
@@ -304,6 +321,7 @@ async function renderSignal() {
   renderHero(sym, L);
   renderLadder(sym, L);
   renderTps(L);
+  renderSigNews(sym);
   fitAll();
   $("sig-status").textContent = L.open
     ? t("in_pos", { v: L.p.variant, date: L.p.entry_date, r: sgn(liveR(L.p, price(sym))) + "R", stop: fmt(L.p.stop) })
@@ -407,6 +425,43 @@ function renderChallenge() {
     </li>`).join("") : `<li class="card"><span class="when">${esc(t("no_history"))}</span></li>`;
 }
 
+/* ---------- Новости ---------- */
+
+function ago(iso) {
+  const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  if (min < 1) return t("ago_now");
+  if (min < 60) return t("ago_m", { n: min });
+  if (min < 48 * 60) return t("ago_h", { n: Math.round(min / 60) });
+  return t("ago_d", { n: Math.round(min / 1440) });
+}
+
+/** One headline: source and age, the title, coin chips; opens the original article in a new tab. */
+function newsItem(it) {
+  const safe = /^https?:\/\//.test(it.link) ? it.link : "#";
+  const chips = it.symbols.filter((s) => S.bySym[s]).map((s) =>
+    `<span class="nchip">${badge(s, S.bySym[s].coin, "xs")}<span>${esc(S.bySym[s].coin)}</span></span>`).join("");
+  return `<a class="card news ${it.delisting ? "delist" : ""}" href="${esc(safe)}" target="_blank" rel="noopener noreferrer">
+    <div class="nmeta"><span class="src">${esc(it.source)}</span><span class="dotsep">·</span><span>${esc(ago(it.published))}</span>
+      ${it.delisting ? `<span class="dlabel">${esc(t("delisting"))}</span>` : ""}</div>
+    <div class="ntitle">${esc(it.title)}</div>
+    ${chips ? `<div class="nchips">${chips}</div>` : ""}
+  </a>`;
+}
+
+function renderNews() {
+  document.querySelectorAll("#news-filter button").forEach((b) => b.classList.toggle("on", b.dataset.f === S.newsFilter));
+  const items = ((S.news && S.news.items) || []).filter((it) => S.newsFilter === "all" || it.symbols.length);
+  $("news-meta").textContent = S.news ? t("news_meta", { n: S.news.items.length }) : "";
+  $("news-list").innerHTML = items.length ? items.map(newsItem).join("") : `<div class="card empty">${esc(t("news_none"))}</div>`;
+}
+
+function renderSigNews(sym) {
+  $("sig-news-title").textContent = t("news_coin", { coin: S.bySym[sym].coin });
+  const items = ((S.news && S.news.items) || []).filter((it) => it.symbols.includes(sym)).slice(0, 3);
+  $("sig-news").innerHTML = items.length ? items.map(newsItem).join("")
+    : `<div class="card empty small">${esc(t("news_coin_none"))}</div>`;
+}
+
 /* ---------- fitting: one-line rows step their fonts down instead of cutting a number ---------- */
 
 /** [line selector, items that may shrink (":scope" = the line itself), smallest font in px] */
@@ -424,6 +479,7 @@ const FIT = [
   [".history li", [".act", ".res", ".when"], 11],
   [".phead", [".cname", ".since"], 11],
   [".chead", [".name", ".meta"], 11],
+  [".tabbar button", [":scope > span:last-child"], 10],
 ];
 
 /** While a line is wider than its box, take 1px off its largest shrinkable font (down to the minimum). */
@@ -471,6 +527,7 @@ function render() {
   if (S.tab === "signal") renderSignal();
   if (S.tab === "positions") renderPositions();
   if (S.tab === "challenge") renderChallenge();
+  if (S.tab === "news") renderNews();
   fitAll();
 }
 
@@ -480,7 +537,7 @@ function openCoin(sym) { S.coin = sym; show("signal"); }
 function hashTab() {
   const [tab, coin] = location.hash.slice(1).split("/");
   if (coin && S.bySym[coin]) S.coin = coin;
-  return ["market", "signal", "positions", "challenge"].includes(tab) ? tab : S.tab;
+  return ["market", "signal", "positions", "news", "challenge"].includes(tab) ? tab : S.tab;
 }
 window.addEventListener("hashchange", () => { if (S.data) show(hashTab()); });
 
@@ -494,10 +551,12 @@ async function init() {
   }
   S.coin = (S.data.positions[0] || {}).symbol ||
     S.data.symbols.slice().sort((a, b) => a.dist_pct - b.dist_pct)[0].symbol;
+  await loadNews();
   show(hashTab());
   await loadLive();
   render();
   setInterval(async () => { await loadLive(); if (S.tab !== "signal") render(); else renderHeader(); }, 60 * 1000);
+  setInterval(async () => { await loadNews(); if (S.tab === "news") render(); }, 10 * 60 * 1000);
 }
 
 $("tabbar").addEventListener("click", (e) => {
@@ -517,6 +576,10 @@ $("lang").addEventListener("click", () => {
   S.lang = S.lang === "ru" ? "en" : "ru";
   storeSet("lang", S.lang);
   render();
+});
+$("news-filter").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-f]");
+  if (b) { S.newsFilter = b.dataset.f; renderNews(); fitAll(); }
 });
 $("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); fitAll(); });
 $("near-info").addEventListener("click", (e) => {
