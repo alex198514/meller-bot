@@ -563,8 +563,12 @@ async function init() {
 
 $("tabbar").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
-  if (b) show(b.dataset.tab);
+  if (b) { show(b.dataset.tab); track("tab-" + b.dataset.tab); }
 });
+// anonymous visit statistics (GoatCounter, no cookies): which tab was opened
+function track(name) {
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) {}
+}
 $("coins").addEventListener("click", (e) => {
   const row = e.target.closest(".row");
   if (row) openCoin(row.dataset.sym);
