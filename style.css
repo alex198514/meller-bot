@@ -362,12 +362,54 @@ html.le360 .lrow { left: 34px; padding: 0 8px; gap: 6px; }
   pointer-events: none;
 }
 
-/* ---------- bubbles (Market tab) ---------- */
-.view-seg { margin-bottom: 12px; }
+/* ---------- bubbles: full-screen overlay opened from the Market tab ---------- */
+.search-row { display: flex; gap: 8px; align-items: stretch; }
+.search-row #search { flex: 1 1 auto; min-width: 0; }
+.bub-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border-radius: 14px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line-2); color: var(--text); font-weight: 800; font-size: 16px; white-space: nowrap; }
+.bub-btn:active { background: var(--card-2); }
+.bub-btn svg { width: 22px; height: 22px; fill: rgba(34, 211, 138, 0.18); stroke: var(--green); stroke-width: 1.8; }
+html.lt360 .bub-btn span { display: none; }
+html.lt360 .bub-btn { padding: 0 12px; }
+.bubbles-overlay { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  padding: calc(8px + var(--sa-t)) calc(var(--side) + var(--sa-r)) calc(8px + var(--sa-b)) calc(var(--side) + var(--sa-l)); }
+.bubbles-overlay[hidden] { display: none; }
+.bub-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.bub-head h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.bub-close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--card); color: var(--text);
+  font-size: 28px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 3px; }
+.bub-close:active { background: var(--card-2); }
 .seg.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .bhint { font-size: 13px; color: var(--muted); margin: 8px 2px 6px; line-height: 1.35; }
 .bhint .ring { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--gold); vertical-align: -1px; }
-.bubble-box { position: relative; overflow: hidden;
+.bubble-box { position: relative; overflow: hidden; flex: 1 1 auto; min-height: 0;
   margin: 0 calc(-1 * (var(--side) + var(--sa-r))) 0 calc(-1 * (var(--side) + var(--sa-l))); }
-html.ge640 .bubble-box { margin: 0; border-radius: var(--radius); background: rgba(255, 255, 255, 0.02); }
 #bubbles { display: block; width: 100%; height: 100%; touch-action: manipulation; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+html.ge640 .bubbles-overlay { padding-left: calc(50% - 300px); padding-right: calc(50% - 300px); }
+html.ge640 .bubble-box { margin: 0; }
+body.noscroll { overflow: hidden; }
+
+/* ---------- Fear & Greed card ---------- */
+.fng { margin-top: 12px; padding: 14px 14px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s; }
+.fng:active { background: var(--card-2); }
+.fng-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fng-title { font-size: 15px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fng-chev { color: var(--muted); font-size: 13px; transition: transform .2s; flex: 0 0 auto; }
+.fng[aria-expanded="true"] .fng-chev { transform: rotate(180deg); }
+.fng-dial { max-width: 340px; margin: 4px auto 0; }
+.fng-dial svg { display: block; width: 100%; height: auto; overflow: visible; }
+.fng-read { text-align: center; margin-top: 2px; }
+.fng-val { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.fng-label { font-size: 22px; font-weight: 800; line-height: 1.2; margin-top: 4px; }
+.fng-hist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.fng-kv { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: var(--card-2); min-width: 0; }
+.fng-kv .k { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.fng-kv .v { font-size: 18px; font-weight: 800; white-space: nowrap; }
+.fng-kv .c { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.fng-kv .v i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.fng-spark { display: block; width: 100%; height: 34px; margin-top: 8px; }
+.fng-full { margin-top: 10px; }
+.fng-full svg { display: block; width: 100%; height: auto; }
+.fng-full .cap { font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+.attr { display: block; text-align: right; font-size: 12px; color: var(--muted); margin: 5px 4px 0; text-decoration: underline; text-underline-offset: 2px; }

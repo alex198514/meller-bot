@@ -7,7 +7,9 @@ const I18N = {
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ делистинг", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} д назад", ago_now: "только что",
-    view_list: "Список", view_bubbles: "Пузыри",
+    bubbles_btn: "Пузыри", close: "Закрыть",
+    fng_title: "Индекс страха и жадности", fng_yday: "Вчера", fng_week: "Неделю назад", fng_30: "За 30 дней",
+    fng_ef: "Крайний страх", fng_f: "Страх", fng_n: "Нейтрально", fng_g: "Жадность", fng_eg: "Крайняя жадность",
     bubble_hint: "Размер — объём за 24ч, цвет — изменение за {p}. <i class=\"ring\"></i> до пробоя ≤ {n}%. Нажмите на монету.",
     bubble_loading: "загрузка изменений за {p}…", bubble_aria: "Пузыри монет: размер — объём, цвет — изменение цены",
     search: "Поиск монеты", near_title: "Ближе к пробою",
@@ -47,7 +49,9 @@ const I18N = {
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ delisting", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", ago_now: "just now",
-    view_list: "List", view_bubbles: "Bubbles",
+    bubbles_btn: "Bubbles", close: "Close",
+    fng_title: "Fear & Greed Index", fng_yday: "Yesterday", fng_week: "Last week", fng_30: "Last 30 days",
+    fng_ef: "Extreme Fear", fng_f: "Fear", fng_n: "Neutral", fng_g: "Greed", fng_eg: "Extreme Greed",
     bubble_hint: "Size is 24h volume, colour the {p} change. <i class=\"ring\"></i> within {n}% of a breakout. Tap a coin.",
     bubble_loading: "loading {p} changes…", bubble_aria: "Coin bubbles: size is volume, colour is price change",
     search: "Search coin", near_title: "Closest to a breakout",
@@ -372,7 +376,8 @@ function sparkline(sym) {
 const barClass = (d) => (d <= S.data.rules.near_pct ? "near" : d <= 10 ? "mid" : "");
 
 function renderMarket() {
-  syncView();
+  renderFng();
+  if (B.open) syncView();
   $("search").placeholder = t("search");
   $("near-title").textContent = t("near_title");
   $("near-explain").textContent = t("near_explain");
@@ -401,10 +406,140 @@ function renderMarket() {
 }
 
 
+
+/* ---------- Fear & Greed (alternative.me, CORS open, no key) ---------- */
+
+const FNG_URL = "https://api.alternative.me/fng/?limit=30";
+
+async function loadFng() {
+  try {
+    const r = await fetch(FNG_URL, { cache: "no-store" });
+    if (!r.ok) return;
+    const j = await r.json();
+    const rows = (j.data || []).map((d) => ({ v: +d.value, c: String(d.value_classification || "").toLowerCase(), ts: +d.timestamp }))
+      .filter((d) => d.v >= 0 && d.v <= 100 && d.ts > 0)
+      .sort((a, b) => b.ts - a.ts);                            // newest first
+    if (rows.length) S.fng = rows;
+  } catch (e) { /* blocked or offline: the card stays hidden (or shows the last values) */ }
+}
+
+/** The alternative.me bands when the API gives no class: 0-24, 25-46, 47-54, 55-75, 76-100. */
+/** The five zones of the dial: 0-24, 25-44, 45-55, 56-75, 76-100 (the label follows the value, as the dial does). */
+const FNG_ZONES = [
+  { from: 0, to: 25, key: "fng_ef", color: "#ff5a6a" },
+  { from: 25, to: 45, key: "fng_f", color: "#ff8f4d" },
+  { from: 45, to: 56, key: "fng_n", color: "#f4d04a" },
+  { from: 56, to: 76, key: "fng_g", color: "#9ddb5f" },
+  { from: 76, to: 101, key: "fng_eg", color: "#22d38a" },
+];
+const fngZone = (v) => FNG_ZONES.find((z) => v < z.to) || FNG_ZONES[4];
+const fngLabel = (d) => t(fngZone(d.v).key);
+const fngColor = (v) => fngZone(v).color;
+
+const FNG_STOPS = FNG_ZONES.map((z) => `<stop offset="${Math.min(1, (z.from + z.to) / 200).toFixed(3)}" stop-color="${z.color}"/>`).join("");
+
+/** Half-circle dial: five coloured zones with their names, a needle at the value (rotated by animateNeedle). */
+function fngDial(v) {
+  const cx = 160, cy = 140, R = 100, r = 74;
+  const P = (rad, val) => { const a = Math.PI * (1 - val / 100); return [cx + rad * Math.cos(a), cy - rad * Math.sin(a)]; };
+  const f = (n) => n.toFixed(2);
+  const here = fngZone(v);
+  const zones = FNG_ZONES.map((z) => {
+    const v0 = z.from ? z.from + 0.5 : 0, v1 = z.to > 100 ? 100 : z.to - 0.5;           // a small gap between zones
+    const [a, b] = [P(R, v0), P(R, v1)], [c, d] = [P(r, v1), P(r, v0)];
+    const on = z === here;
+    const mid = (z.from + Math.min(100, z.to - 1)) / 2, [lx, ly] = P(R + 12, mid);
+    const words = t(z.key).split(" "), anchor = lx < cx - 20 ? "end" : lx > cx + 20 ? "start" : "middle";
+    const y0 = ly - (words.length - 1) * 6.5 + (anchor === "middle" ? -2 : 3.5);
+    const label = words.map((w, i) => `<tspan x="${f(lx)}" y="${f(y0 + i * 13)}">${esc(w)}</tspan>`).join("");
+    return `<path d="M${f(a[0])} ${f(a[1])} A${R} ${R} 0 0 1 ${f(b[0])} ${f(b[1])} L${f(c[0])} ${f(c[1])} A${r} ${r} 0 0 0 ${f(d[0])} ${f(d[1])}Z"
+        fill="${z.color}" fill-opacity="${on ? 1 : 0.32}"/>
+      <text text-anchor="${anchor}" font-size="11.5" font-weight="${on ? 800 : 600}" fill="${on ? z.color : "#9aa6bd"}">${label}</text>`;
+  }).join("");
+  const ticks = [0, 25, 45, 56, 76, 100].map((x) => { const [a, b] = [P(r - 3, x), P(r - 8, x)];
+    return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>`; }).join("");
+  return `<svg viewBox="0 0 320 152" role="img" aria-hidden="true" font-family="Manrope, system-ui, sans-serif">
+    ${zones}${ticks}
+    <g id="fng-needle" transform="rotate(0 ${cx} ${cy})">
+      <path d="M${cx - 92} ${cy} L${cx} ${cy - 5.5} L${cx + 14} ${cy} L${cx} ${cy + 5.5}Z" fill="#f2f5fb"/>
+    </g>
+    <circle cx="${cx}" cy="${cy}" r="9" fill="#f2f5fb"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="${here.color}"/>
+  </svg>`;
+}
+
+/** Swing the needle from 0 to the value (once per page load), or set it straight away under reduced motion. */
+function animateNeedle(v) {
+  const g = document.getElementById("fng-needle");
+  if (!g) return;
+  const set = (x) => g.setAttribute("transform", `rotate(${(1.8 * x).toFixed(2)} 160 140)`);
+  if (S.fngSwung || reducedMotion()) { set(v); S.fngSwung = true; return; }
+  S.fngSwung = true;
+  const t0 = performance.now(), dur = 1300;
+  const ease = (p) => { const c = 1.5; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };   // overshoot, settle
+  const tick = (now) => {
+    if (!g.isConnected) return;
+    const p = Math.min(1, (now - t0) / dur);
+    set(Math.max(0, Math.min(100, v * ease(p))));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function fngSpark(rows) {
+  const pts = rows.slice().reverse(), n = pts.length;
+  const xy = pts.map((d, i) => [n > 1 ? (300 * i) / (n - 1) : 150, 32 - (30 * d.v) / 100]);
+  const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  return `<svg class="fng-spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="fngS" x1="0" y1="32" x2="0" y2="2" gradientUnits="userSpaceOnUse">${FNG_STOPS}</linearGradient></defs>
+    <polyline points="${line}" fill="none" stroke="url(#fngS)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function fngChart(rows) {
+  const pts = rows.slice().reverse(), n = pts.length;
+  const L = 24, R = 312, T = 8, Bm = 128;
+  const X = (i) => (n > 1 ? L + ((R - L) * i) / (n - 1) : (L + R) / 2), Y = (v) => Bm - ((Bm - T) * v) / 100;
+  const day = (ts) => new Date(ts * 1000).toLocaleDateString(S.lang === "ru" ? "ru-RU" : "en-US", { day: "numeric", month: "short", timeZone: "UTC" });
+  const grid = [0, 25, 50, 75, 100].map((v) => `<line x1="${L}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(255,255,255,0.08)"/>
+    <text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="#9aa6bd">${v}</text>`).join("");
+  const line = pts.map((d, i) => `${X(i).toFixed(1)},${Y(d.v).toFixed(1)}`).join(" ");
+  const dots = pts.map((d, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(d.v).toFixed(1)}" r="${i === n - 1 ? 4.5 : 2.2}" fill="${fngColor(d.v)}"/>`).join("");
+  const ticks = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i)
+    .map((i, k, a) => `<text x="${X(i).toFixed(1)}" y="146" font-size="10" fill="#9aa6bd" text-anchor="${k === 0 && a.length > 1 ? "start" : k === a.length - 1 && a.length > 1 ? "end" : "middle"}">${esc(day(pts[i].ts))}</text>`).join("");
+  const last = pts[n - 1];
+  return `<div class="fng-full"><p class="cap">${esc(t("fng_30"))}</p>
+    <svg viewBox="0 0 320 150" role="img" aria-label="${esc(t("fng_30"))}" font-family="Manrope, system-ui, sans-serif">
+    <defs><linearGradient id="fngL" x1="0" y1="${Bm}" x2="0" y2="${T}" gradientUnits="userSpaceOnUse">${FNG_STOPS}</linearGradient></defs>
+    ${grid}<polyline points="${line}" fill="none" stroke="url(#fngL)" stroke-width="2.2" stroke-linejoin="round"/>${dots}
+    <text x="${Math.min(R, X(n - 1)).toFixed(1)}" y="${(Y(last.v) - 9).toFixed(1)}" text-anchor="end" font-size="12" font-weight="800" fill="${fngColor(last.v)}">${last.v}</text>
+    ${ticks}</svg></div>`;
+}
+
+function renderFng() {
+  const card = $("fng"), rows = S.fng;
+  card.hidden = $("fng-attr").hidden = !rows;
+  if (!rows) return;
+  const now = rows[0], yd = rows[1], wk = rows[7];
+  const key = [S.lang, rows.length, now.ts, now.v, yd && yd.v, wk && wk.v, !!S.fngOpen].join("|");
+  if (key === S.fngKey) return;                               // unchanged: keep the DOM (and a running needle swing)
+  S.fngKey = key;
+  const kv = (k, d) => (d ? `<div class="fng-kv"><span class="k">${esc(t(k))}</span>
+    <span class="v"><i style="background:${fngColor(d.v)}"></i>${d.v}</span><span class="c">${esc(fngLabel(d))}</span></div>` : "");
+  card.setAttribute("aria-expanded", String(!!S.fngOpen));
+  card.setAttribute("aria-label", `${t("fng_title")}: ${now.v}, ${fngLabel(now)}`);
+  card.innerHTML = `<div class="fng-top"><span class="fng-title">${esc(t("fng_title"))}</span><span class="fng-chev">▼</span></div>
+    <div class="fng-dial">${fngDial(now.v)}</div>
+    <div class="fng-read"><div class="fng-val" style="color:${fngColor(now.v)}">${now.v}</div>
+      <div class="fng-label" style="color:${fngColor(now.v)}">${esc(fngLabel(now))}</div></div>
+    <div class="fng-hist">${kv("fng_yday", yd)}${kv("fng_week", wk)}</div>
+    ${S.fngOpen ? fngChart(rows) : fngSpark(rows)}`;
+  animateNeedle(now.v);
+}
+
 /* ---------- bubbles: one circle per coin, size = 24h quote volume, colour = change over the chosen period ---------- */
 
 const B = {
-  view: storeGet("meller_market_view") === "bubbles" ? "bubbles" : "list",
+  open: false,
   period: ["1h", "24h", "7d"].includes(storeGet("meller_bubble_period")) ? storeGet("meller_bubble_period") : "24h",
   nodes: [], bySym: {}, raf: 0, w: 0, h: 0, dpr: 1, last: 0, lastRadii: 0,
   base: { "1h": {}, "7d": {} }, at: { "1h": 0, "7d": 0 }, loading: { "1h": false, "7d": false },
@@ -412,13 +547,28 @@ const B = {
 };
 const PERIOD_SCALE = { "1h": 3, "24h": 10, "7d": 25 };        // |change| at which the colour is at full strength
 const reducedMotion = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
-const bubblesOn = () => !!S.data && S.tab === "market" && B.view === "bubbles" && !document.hidden;
+const bubblesOn = () => !!S.data && S.tab === "market" && B.open && !document.hidden;
+
+function openBubbles() {
+  if (!S.data) return;
+  B.open = true;
+  $("bubble-view").hidden = false;
+  document.body.classList.add("noscroll");
+  syncView();
+  $("bubble-close").focus({ preventScroll: true });
+}
+
+function closeBubbles() {
+  if (!B.open) return;
+  B.open = false;
+  stopBubbles();
+  $("bubble-view").hidden = true;
+  document.body.classList.remove("noscroll");
+}
 
 function syncView() {
-  const bub = B.view === "bubbles";
-  $("list-view").hidden = bub;
-  $("bubble-view").hidden = !bub;
-  document.querySelectorAll("#view-switch button").forEach((b) => b.classList.toggle("on", b.dataset.view === B.view));
+  const bub = B.open;
+  $("bubble-close").setAttribute("aria-label", t("close"));
   document.querySelectorAll("#period-switch button").forEach((b) => b.classList.toggle("on", b.dataset.p === B.period));
   const pl = { "1h": "1H", "24h": "24H", "7d": "7D" }[B.period];
   const waiting = B.period !== "24h" && !Object.keys(B.base[B.period]).length;
@@ -464,23 +614,19 @@ async function loadPeriod(p) {
   await Promise.all(Array.from({ length: 6 }, worker));
   B.base[p] = Object.assign(B.base[p], out);
   B.loading[p] = false;
-  if (S.tab === "market" && B.view === "bubbles") { syncView(); if (B.still) drawBubbles(); }
+  if (B.open) { syncView(); if (B.still) drawBubbles(); }
 }
 
-/** Box size: the screen width, from the top of the box down to the tab bar. */
+/** Box size: whatever the full-screen overlay leaves under its header (CSS flex). */
 function sizeBubbles() {
   const box = $("bubble-box"), cv = $("bubbles");
-  const z = (window.__mb && window.__mb.zoom) || 1;
-  const top = box.getBoundingClientRect().top + window.scrollY;
-  const bar = $("tabbar").getBoundingClientRect().height;
   const w = Math.round(box.clientWidth);
-  const h = Math.max(300, Math.round(window.innerHeight / z - top - bar - 10));
+  const h = Math.max(200, Math.round(box.clientHeight));
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   if (w === B.w && h === B.h && dpr === B.dpr) return false;
   const sx = B.w ? w / B.w : 1, sy = B.h ? h / B.h : 1;
   for (const n of B.nodes) { n.x *= sx; n.y *= sy; }
   B.w = w; B.h = h; B.dpr = dpr;
-  box.style.height = h + "px";
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   return true;
 }
@@ -1111,7 +1257,7 @@ function destroyCharts() {
 function show(tab) {
   if (tab !== S.tab) destroyCharts();
   if (tab !== "signal") wsKline(null);
-  if (tab !== "market") stopBubbles();
+  if (tab !== "market") closeBubbles();
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -1150,7 +1296,7 @@ async function init() {
   }
   S.coin = (S.data.positions[0] || {}).symbol ||
     S.data.symbols.slice().sort((a, b) => a.dist_pct - b.dist_pct)[0].symbol;
-  await loadNews();
+  await Promise.all([loadNews(), loadFng()]);
   show(hashTab());
   await loadLive();
   render();
@@ -1168,6 +1314,11 @@ async function init() {
     wsConnect();
   });
   setInterval(async () => { await loadNews(); if (S.tab === "news") render(); }, 10 * 60 * 1000);
+  setInterval(async () => {                                   // Fear & Greed: every 10 minutes while the app is open
+    if (document.hidden) return;
+    await loadFng();
+    if (S.tab === "market") { renderFng(); fitAll(); }
+  }, 10 * 60 * 1000);
 }
 
 $("tabbar").addEventListener("click", (e) => {
@@ -1206,13 +1357,12 @@ $("news-filter").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-f]");
   if (b) { S.newsFilter = b.dataset.f; renderNews(); fitAll(); }
 });
-$("view-switch").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-view]");
-  if (!b || b.dataset.view === B.view) return;
-  B.view = b.dataset.view;
-  storeSet("meller_market_view", B.view);
-  renderMarket(); fitAll();
-  window.scrollTo(0, 0);
+$("bubbles-btn").addEventListener("click", openBubbles);
+$("bubble-close").addEventListener("click", closeBubbles);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && B.open) closeBubbles(); });
+$("fng").addEventListener("click", () => { S.fngOpen = !S.fngOpen; renderFng(); fitAll(); });
+$("fng").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); S.fngOpen = !S.fngOpen; renderFng(); }
 });
 $("period-switch").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-p]");
@@ -1235,7 +1385,7 @@ $("period-switch").addEventListener("click", (e) => {
       const d = Math.hypot(x - n.x, y - n.y) / Math.max(n.r, 18);   // small bubbles get a finger-sized target
       if (d <= 1 && d < best) { best = d; hit = n; }
     }
-    if (hit) openCoin(hit.sym);
+    if (hit) { closeBubbles(); openCoin(hit.sym); }
   });
 })();
 $("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); fitAll(); });
