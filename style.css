@@ -183,6 +183,9 @@ html.ge640 main { max-width: 600px; margin: 0 auto; }
 .tag { font-size: 13px; font-weight: 800; padding: 5px 9px; border-radius: 9px; white-space: nowrap; }
 .tag.long { background: var(--green); color: #05251a; }
 .tag.note { color: var(--muted); border: 1px solid var(--line-2); }
+.fstat { margin: 0 0 12px; padding: 9px 12px; border-radius: 12px; font-size: 15px; font-weight: 700; line-height: 1.35; }
+.fstat.bad { color: var(--red); background: rgba(255, 90, 106, 0.12); border: 1px solid rgba(255, 90, 106, 0.45); }
+.fstat.ok { color: var(--green); background: rgba(34, 211, 138, 0.12); border: 1px solid rgba(34, 211, 138, 0.45); }
 .ladder { position: relative; height: 330px; }
 .ladder .track { position: absolute; left: 10px; top: 0; bottom: 0; width: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); }
 .ladder .zone { position: absolute; left: 10px; width: 8px; border-radius: 4px; }

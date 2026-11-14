@@ -16,7 +16,9 @@ const I18N = {
     bull: "бычий", bear: "медвежий", side: "боковик", nodata: "нет данных",
     chip_wait: "ЖДЁМ ПРОБОЯ", chip_long: "LONG ОТКРЫТ",
     entry: "Вход", stop: "Стоп", now: "Сейчас", take: "Тейк", trailing: "трейлинг",
-    plan: "план, если будет пробой", pos_note: "позиция {v} с {date}", level: "пробой",
+    plan: "план, если будет пробой", plan_close: "план на закрытии сегодня",
+    f_skip: "Свеча {x} ATR (фильтр {f} ATR): вход будет пропущен", f_ok: "Свеча {x} ATR: фильтр пройден, BUY на дневном закрытии",
+    pos_note: "позиция {v} с {date}", level: "пробой",
     wait: "Ждём дневного закрытия выше {lvl}, осталось {d}%.",
     above_now: "Цена выше уровня {lvl}: сигнал будет, если дневная свеча закроется выше (закрытие в 00:00 UTC).",
     in_pos: "Позиция {v} открыта {date}: сейчас {r}, стоп {stop}.",
@@ -43,7 +45,9 @@ const I18N = {
     bull: "bull", bear: "bear", side: "sideways", nodata: "no data",
     chip_wait: "WAITING", chip_long: "LONG OPEN",
     entry: "Entry", stop: "Stop", now: "Now", take: "Take", trailing: "trailing",
-    plan: "plan if it breaks out", pos_note: "position {v} since {date}", level: "breakout",
+    plan: "plan if it breaks out", plan_close: "plan at today's close",
+    f_skip: "Candle {x} ATR (filter {f} ATR): entry will be skipped", f_ok: "Candle {x} ATR: filter passed, BUY at the daily close",
+    pos_note: "position {v} since {date}", level: "breakout",
     wait: "Waiting for a daily close above {lvl}, {d}% to go.",
     above_now: "Price is above {lvl}: a signal comes if the daily candle closes above it (close at 00:00 UTC).",
     in_pos: "Position {v} opened {date}: now {r}, stop {stop}.",
@@ -251,8 +255,30 @@ function levelsFor(sym) {
     const tp = p.tp.length ? p.tp : [p.entry + r.tp_r[0] * p.risk, p.entry + r.tp_r[1] * p.risk];
     return { open: true, p, entry: p.entry, stop: p.stop, tp1: tp[0], tp2: tp[1] };
   }
-  const entry = s.level, stop = entry - r.stop_atr * s.atr, risk = entry - stop;
-  return { open: false, entry, stop, tp1: entry + r.tp_r[0] * risk, tp2: entry + r.tp_r[1] * risk };
+  // above the level: the plan if today closes here (entry = the current price); below it: entry at the level
+  const above = price(sym) > s.level;
+  const entry = above ? price(sym) : s.level, stop = entry - r.stop_atr * s.atr, risk = entry - stop;
+  return { open: false, above, entry, stop, tp1: entry + r.tp_r[0] * risk, tp2: entry + r.tp_r[1] * risk };
+}
+
+/** Today's daily candle so far (UTC): the newest Binance kline if it is today's, else the export's; widened by the
+    live price (the klines are cached for up to 5 minutes). null if unknown. */
+function todayBar(sym) {
+  const day0 = Math.floor(Date.now() / 86400000) * 86400, p = price(sym);
+  const k = S.klines[sym];
+  let bar = null;
+  if (k && k.rows.length && k.rows[k.rows.length - 1].time === day0) bar = k.rows[k.rows.length - 1];
+  const td = S.bySym[sym].today;
+  if (!bar && td && td[0] === new Date(day0 * 1000).toISOString().slice(0, 10)) bar = { high: td[2], low: td[3] };
+  return bar ? { high: Math.max(bar.high, p), low: Math.min(bar.low, p) } : null;
+}
+
+/** The 2 ATR candle filter for today's candle so far: what B does if the day closes above the level now. */
+function filterStatus(sym) {
+  const bar = todayBar(sym), atr = S.bySym[sym].atr, lim = S.data.rules.skip_range_atr || 2;
+  if (!bar || !atr) return "";
+  const x = (bar.high - bar.low) / atr, skip = x > lim;
+  return `<div class="fstat ${skip ? "bad" : "ok"}">${esc(t(skip ? "f_skip" : "f_ok", { x: x.toFixed(1), f: lim }))}</div>`;
 }
 
 function renderHero(sym, L) {
@@ -287,9 +313,10 @@ function renderLadder(sym, L) {
   items[0].ly = Math.max(items[0].ly, PAD);
   for (let n = 1; n < items.length; n++) items[n].ly = Math.max(items[n].ly, items[n - 1].ly + GAP);
   const yE = y(L.entry), rr = (L.tp2 - L.entry) / (L.entry - L.stop);
-  const note = L.open ? t("pos_note", { v: L.p.variant, date: L.p.entry_date }) : t("plan");
+  const note = L.open ? t("pos_note", { v: L.p.variant, date: L.p.entry_date }) : t(L.above ? "plan_close" : "plan");
   $("ladder").innerHTML = `
     <div class="lad-head"><span class="tag long">LONG · 1D · R:R 1:${rr.toFixed(1)}</span><span class="tag note">${esc(note)}</span></div>
+    ${!L.open && L.above ? filterStatus(sym) : ""}
     <div class="ladder">
       <div class="track"></div>
       <div class="zone g" style="top:${y(L.tp2).toFixed(1)}px;height:${(yE - y(L.tp2)).toFixed(1)}px"></div>
@@ -327,6 +354,7 @@ async function renderSignal() {
     ? t("in_pos", { v: L.p.variant, date: L.p.entry_date, r: sgn(liveR(L.p, price(sym))) + "R", stop: fmt(L.p.stop) })
     : d <= 0 ? t("above_now", { lvl: fmt(s.level) }) : t("wait", { lvl: fmt(s.level), d: d.toFixed(1) });
   const rows = await loadKlines(sym);
+  if (S.coin === sym && S.tab === "signal" && !L.open && L.above) { renderLadder(sym, L); fitAll(); }   // today's candle now known
   // only while the Signal tab is on screen: a chart built in a hidden tab has no width to size from
   if (S.coin !== sym || S.tab !== "signal" || typeof LightweightCharts === "undefined") return;
   destroyCharts();
