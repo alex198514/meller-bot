@@ -36,11 +36,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Meller Bot">
-  <link rel="manifest" href="manifest.json?v=11">
+  <link rel="manifest" href="manifest.json?v=13">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>Meller Bot</title>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=13">
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -74,6 +74,7 @@
       <div class="card hero" id="sig-hero"></div>
       <div class="card ladder-card" id="ladder"></div>
       <div class="tps" id="tps"></div>
+      <button class="primary" id="entered-btn" type="button"></button>
       <p class="sentence" id="sig-status"></p>
       <div class="card chart-card"><div class="chart" id="chart"></div></div>
       <h2 class="h2" id="sig-news-title"></h2>
@@ -81,6 +82,8 @@
     </section>
 
     <section class="tab" id="tab-positions" hidden>
+      <div id="journal"></div>
+      <h2 class="h2" id="bot-pos-title"></h2>
       <div id="positions"></div>
     </section>
 
@@ -104,6 +107,22 @@
 
     <footer class="foot">built with Claude Code · @meller_ai · not financial advice</footer>
   </main>
+
+  <div class="sheet" id="sheet" hidden>
+    <form class="sheet-card" id="entry-form" autocomplete="off">
+      <div class="sheet-head"><h3 id="sheet-title"></h3><button type="button" class="x" id="sheet-close" aria-label="Close">✕</button></div>
+      <label><span data-t="f_entry"></span><input name="entry" inputmode="decimal" required></label>
+      <label><span data-t="f_stop"></span><input name="stop" inputmode="decimal" required></label>
+      <div class="two">
+        <label><span>TP1</span><input name="tp1" inputmode="decimal"></label>
+        <label><span>TP2</span><input name="tp2" inputmode="decimal"></label>
+      </div>
+      <label><span data-t="f_size"></span><input name="size" inputmode="decimal" required></label>
+      <p class="hint" id="sheet-hint"></p>
+      <button class="primary" type="submit" data-t="f_save"></button>
+    </form>
+  </div>
+  <input type="file" id="import-file" accept="application/json,.json" hidden>
 
   <nav class="tabbar" id="tabbar">
     <button data-tab="market" class="active" type="button">
@@ -129,6 +148,6 @@
   </nav>
 
   <script data-goatcounter="https://mellerbot.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

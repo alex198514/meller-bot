@@ -21,8 +21,16 @@ const I18N = {
     pos_note: "позиция {v} с {date}", level: "пробой",
     wait: "Ждём дневного закрытия выше {lvl}, осталось {d}%.",
     above_now: "Цена выше уровня {lvl}: сигнал будет, если дневная свеча закроется выше (закрытие в 00:00 UTC).",
+    above_skip: "Цена выше уровня {lvl}, но сегодняшняя свеча уже {x} ATR: если закроется так, бот пропустит вход.",
     in_pos: "Позиция {v} открыта {date}: сейчас {r}, стоп {stop}.",
     no_pos: "Нет открытых позиций. Бот ждёт пробоя.", since: "с {date}",
+    i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
+    f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
+    f_bad: "Проверьте числа: стоп должен быть ниже входа, размер больше нуля.", my_none: "Открытых сделок нет. Нажмите «Я вошёл» на вкладке Сигнал.",
+    closed_btn: "Закрыл", delete_btn: "Удалить", ask_exit: "Цена выхода {coin}:", ask_delete: "Удалить сделку {coin} без записи в историю?",
+    to_stop: "до стопа", to_tp1: "до TP1", size: "размер", result: "Результат", my_entry: "мой вход", bot_entry: "вход бота", me: "я", bot: "бот",
+    history_t: "История моих сделок", summary: "Сделок: {n} · в плюсе {w}% · {r} · {u}", export_btn: "Экспорт", import_btn: "Импорт",
+    imported: "Импортировано сделок: {n}", import_bad: "Файл не похож на экспорт журнала.", opened: "открыта {d}", closed_at: "закрыта {d}",
     risk: "Риск", tp_hit: "TP{n} исполнен", be: "стоп в безубытке", not_in_ch: "вне челленджа",
     challenge: "Челлендж", phase: "фаза", attempt: "попытка", target: "Цель", daily: "Дневной убыток",
     maxloss: "Макс. убыток", days: "Торговые дни", passed: "ОБЕ ФАЗЫ ПРОЙДЕНЫ", balance: "баланс",
@@ -50,8 +58,16 @@ const I18N = {
     pos_note: "position {v} since {date}", level: "breakout",
     wait: "Waiting for a daily close above {lvl}, {d}% to go.",
     above_now: "Price is above {lvl}: a signal comes if the daily candle closes above it (close at 00:00 UTC).",
+    above_skip: "Price is above {lvl}, but today's candle is {x} ATR: if it closes like this, the bot will skip the entry.",
     in_pos: "Position {v} opened {date}: now {r}, stop {stop}.",
     no_pos: "No open positions. The bot is waiting for a breakout.", since: "since {date}",
+    i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
+    f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
+    f_bad: "Check the numbers: the stop must be below the entry and the size above zero.", my_none: "No open trades. Tap \u201cI entered\u201d on the Signal tab.",
+    closed_btn: "Closed", delete_btn: "Delete", ask_exit: "Exit price for {coin}:", ask_delete: "Delete the {coin} trade without adding it to the history?",
+    to_stop: "to stop", to_tp1: "to TP1", size: "size", result: "Result", my_entry: "my entry", bot_entry: "bot entry", me: "me", bot: "bot",
+    history_t: "My trade history", summary: "Trades: {n} · winners {w}% · {r} · {u}", export_btn: "Export", import_btn: "Import",
+    imported: "Trades imported: {n}", import_bad: "This file does not look like a journal export.", opened: "opened {d}", closed_at: "closed {d}",
     risk: "Risk", tp_hit: "TP{n} hit", be: "stop at breakeven", not_in_ch: "outside the challenge",
     challenge: "Challenge", phase: "phase", attempt: "attempt", target: "Target", daily: "Daily loss",
     maxloss: "Max loss", days: "Trading days", passed: "BOTH PHASES PASSED", balance: "balance",
@@ -273,12 +289,30 @@ function todayBar(sym) {
   return bar ? { high: Math.max(bar.high, p), low: Math.min(bar.low, p) } : null;
 }
 
-/** The 2 ATR candle filter for today's candle so far: what B does if the day closes above the level now. */
-function filterStatus(sym) {
+/** Today's candle so far in filtered ATRs vs the 2 ATR filter: { x, lim, skip }, or null if unknown. */
+function candleFilter(sym) {
   const bar = todayBar(sym), atr = S.bySym[sym].atr, lim = S.data.rules.skip_range_atr || 2;
-  if (!bar || !atr) return "";
-  const x = (bar.high - bar.low) / atr, skip = x > lim;
-  return `<div class="fstat ${skip ? "bad" : "ok"}">${esc(t(skip ? "f_skip" : "f_ok", { x: x.toFixed(1), f: lim }))}</div>`;
+  if (!bar || !atr) return null;
+  const x = (bar.high - bar.low) / atr;
+  return { x, lim, skip: x > lim };
+}
+
+/** The 2 ATR candle filter line under the plan: what B does if the day closes above the level now. */
+function filterStatus(sym) {
+  const c = candleFilter(sym);
+  if (!c) return "";
+  return `<div class="fstat ${c.skip ? "bad" : "ok"}">${esc(t(c.skip ? "f_skip" : "f_ok", { x: c.x.toFixed(1), f: c.lim }))}</div>`;
+}
+
+/** The sentence under the take-profit boxes; above the level it follows the candle filter. */
+function signalSentence(sym, L) {
+  const s = S.bySym[sym];
+  if (L.open) return t("in_pos", { v: L.p.variant, date: L.p.entry_date, r: sgn(liveR(L.p, price(sym))) + "R", stop: fmt(L.p.stop) });
+  if (L.above) {
+    const c = candleFilter(sym);
+    return c && c.skip ? t("above_skip", { lvl: fmt(s.level), x: c.x.toFixed(1) }) : t("above_now", { lvl: fmt(s.level) });
+  }
+  return t("wait", { lvl: fmt(s.level), d: dist(sym).toFixed(1) });
 }
 
 function renderHero(sym, L) {
@@ -344,17 +378,20 @@ function renderTps(L) {
 }
 
 async function renderSignal() {
-  const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym], d = dist(sym);
+  const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym];
+  $("entered-btn").textContent = t("i_entered");
   renderHero(sym, L);
   renderLadder(sym, L);
   renderTps(L);
   renderSigNews(sym);
   fitAll();
-  $("sig-status").textContent = L.open
-    ? t("in_pos", { v: L.p.variant, date: L.p.entry_date, r: sgn(liveR(L.p, price(sym))) + "R", stop: fmt(L.p.stop) })
-    : d <= 0 ? t("above_now", { lvl: fmt(s.level) }) : t("wait", { lvl: fmt(s.level), d: d.toFixed(1) });
+  $("sig-status").textContent = signalSentence(sym, L);
   const rows = await loadKlines(sym);
-  if (S.coin === sym && S.tab === "signal" && !L.open && L.above) { renderLadder(sym, L); fitAll(); }   // today's candle now known
+  if (S.coin === sym && S.tab === "signal" && !L.open && L.above) {       // today's candle now known
+    renderLadder(sym, L);
+    $("sig-status").textContent = signalSentence(sym, L);
+    fitAll();
+  }
   // only while the Signal tab is on screen: a chart built in a hidden tab has no width to size from
   if (S.coin !== sym || S.tab !== "signal" || typeof LightweightCharts === "undefined") return;
   destroyCharts();
@@ -375,9 +412,158 @@ async function renderSignal() {
   S.chart.timeScale().fitContent();
 }
 
+/* ---------- my trade journal: on this phone only (localStorage), export / import as JSON ---------- */
+
+const J_KEY = "meller_journal_v1";
+const num = (v) => { const x = parseFloat(String(v).replace(",", ".").replace(/[^0-9.\-eE]/g, "")); return isFinite(x) ? x : NaN; };
+const usd = (x) => (x < 0 ? "−$" : "+$") + Math.abs(x).toFixed(2);
+const today10 = () => new Date().toISOString().slice(0, 10);
+
+function jLoad() {
+  try {
+    const d = JSON.parse(localStorage.getItem(J_KEY) || "{}");
+    return Array.isArray(d.trades) ? d.trades : [];
+  } catch (e) { return []; }
+}
+function jSave(trades) {
+  try { localStorage.setItem(J_KEY, JSON.stringify({ version: 1, trades })); return true; } catch (e) { return false; }
+}
+/** A trade from storage or an import, or null if it is not one. */
+function jClean(x) {
+  if (!x || typeof x !== "object" || !S.bySym[x.sym]) return null;
+  const t = { id: String(x.id || Date.now() + Math.random()).slice(0, 40), sym: x.sym, entry: num(x.entry), stop: num(x.stop),
+              tp1: num(x.tp1), tp2: num(x.tp2), size: num(x.size), opened: String(x.opened || "").slice(0, 10), closed: null };
+  if (!(t.entry > 0 && t.size > 0 && t.stop > 0 && t.stop < t.entry)) return null;
+  if (x.closed && num(x.closed.price) > 0) t.closed = { price: num(x.closed.price), date: String(x.closed.date || "").slice(0, 10) };
+  return t;
+}
+const jR = (t, px) => (px - t.entry) / (t.entry - t.stop);
+const jUsd = (t, px) => t.size * (px / t.entry - 1);
+
+function openSheet() {
+  const sym = S.coin, L = levelsFor(sym), p = price(sym), f = $("entry-form");
+  const stop = L.stop, entry = p;
+  const r = entry - stop;
+  f.entry.value = fmtNum(entry);
+  f.stop.value = fmtNum(stop);
+  f.tp1.value = fmtNum(L.open ? L.tp1 : entry + 2 * r);
+  f.tp2.value = fmtNum(L.open ? L.tp2 : entry + 4 * r);
+  f.size.value = r > 0 ? (50 / r * entry).toFixed(2) : "";
+  $("sheet-title").textContent = `${t("i_entered")}: ${S.bySym[sym].coin}`;
+  $("sheet-hint").textContent = t("f_hint");
+  $("sheet").hidden = false;
+}
+
+function saveSheet(e) {
+  e.preventDefault();
+  const f = $("entry-form");
+  const tr = jClean({ id: Date.now().toString(36), sym: S.coin, entry: f.entry.value, stop: f.stop.value, tp1: f.tp1.value,
+                      tp2: f.tp2.value, size: f.size.value, opened: today10() });
+  if (!tr) { $("sheet-hint").textContent = t("f_bad"); return; }
+  jSave(jLoad().concat([tr]));
+  $("sheet").hidden = true;
+  show("positions");
+}
+
+function renderJournal() {
+  const all = jLoad().map(jClean).filter(Boolean);
+  const open = all.filter((x) => !x.closed), done = all.filter((x) => x.closed).reverse();
+  const cards = open.map((x) => {
+    const coin = S.bySym[x.sym].coin, px = price(x.sym), r = jR(x, px), pc = 100 * (px / x.entry - 1);
+    const bot = posOf(x.sym);
+    const br = bot ? liveR(bot, px) : 0;
+    const vs = bot ? `<div class="vs"><span></span><span class="h">${esc(t("me"))}</span><span class="h">${esc(t("bot"))}</span>
+        <span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}${N(fmt(bot.entry))}
+        <span class="k">${esc(t("result"))}</span>${N(sgn(r) + "R", cls(r))}${N(sgn(br) + "R", cls(br))}</div>` : "";
+    return `<div class="card jcard">
+      <div class="phead">${badge(x.sym, coin)}<span class="cname">${esc(coin)}</span><span class="since">${esc(t("opened", { d: x.opened }))}</span></div>
+      <div class="pnl">${N(sgn(r) + "R", "r " + cls(r))}${N(sgn(pc) + "%", "usd " + cls(pc))}${N(usd(jUsd(x, px)), "usd " + cls(pc))}</div>
+      <div class="kv">
+        <span class="k">${esc(t("entry"))}</span><span class="v">${N(fmt(x.entry))}</span>
+        <span class="k">${esc(t("now"))}</span><span class="v">${N(fmt(px))}</span>
+        <span class="k">${esc(t("stop"))}</span><span class="v">${N(fmt(x.stop), "down")} ${N(sgn(100 * (x.stop / px - 1), 1) + "%", "down")}</span>
+        ${x.tp1 > 0 ? `<span class="k">TP1</span><span class="v">${N(fmt(x.tp1), "up")} ${N(sgn(100 * (x.tp1 / px - 1), 1) + "%", "up")}</span>` : ""}
+        ${x.tp2 > 0 ? `<span class="k">TP2</span><span class="v">${N(fmt(x.tp2), "up")}</span>` : ""}
+        <span class="k">${esc(t("size"))}</span><span class="v">${N("$" + x.size.toFixed(2))}</span>
+      </div>${vs}
+      <div class="jbtns"><button type="button" class="ghost-btn" data-close="${esc(x.id)}">${esc(t("closed_btn"))}</button>
+        <button type="button" class="ghost-btn danger" data-del="${esc(x.id)}">${esc(t("delete_btn"))}</button></div>
+    </div>`;
+  }).join("");
+  const rs = done.map((x) => jR(x, x.closed.price)), us = done.map((x) => jUsd(x, x.closed.price));
+  const tr = rs.reduce((a, b) => a + b, 0), tu = us.reduce((a, b) => a + b, 0);
+  const summary = done.length ? t("summary", { n: done.length, w: Math.round(100 * rs.filter((v) => v > 0).length / done.length),
+                                               r: sgn(tr) + "R", u: usd(tu) }) : "";
+  const hist = done.map((x, i) => `<li class="card">${badge(x.sym, S.bySym[x.sym].coin)}
+      <div class="what"><div class="act">${esc(S.bySym[x.sym].coin)} ${N(fmt(x.entry))} → ${N(fmt(x.closed.price))}</div>
+        <div class="when">${esc(x.opened)} … ${esc(x.closed.date)}</div></div>
+      <div class="hres">${N(sgn(rs[i]) + "R", "res " + cls(rs[i]))}${N(usd(us[i]), "when " + cls(us[i]))}</div></li>`).join("");
+  $("journal").innerHTML = `
+    <div class="jhead"><h2 class="h2">${esc(t("my_trades"))}</h2>
+      <div class="jio"><button type="button" class="ghost-btn" id="j-export">${esc(t("export_btn"))}</button>
+        <button type="button" class="ghost-btn" id="j-import">${esc(t("import_btn"))}</button></div></div>
+    ${cards || `<div class="card empty small">${esc(t("my_none"))}</div>`}
+    ${done.length ? `<h2 class="h2">${esc(t("history_t"))}</h2><p class="jsum">${N(esc(summary))}</p><ul class="history">${hist}</ul>` : ""}`;
+  $("bot-pos-title").textContent = t("bot_positions");
+}
+
+function jAction(e) {
+  const c = e.target.closest("[data-close],[data-del],#j-export,#j-import");
+  if (!c) return;
+  const all = jLoad();
+  if (c.id === "j-export") {
+    const blob = new Blob([JSON.stringify({ version: 1, app: "meller-bot", exported: new Date().toISOString(), trades: all }, null, 1)],
+                          { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `meller-journal-${today10()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    return;
+  }
+  if (c.id === "j-import") { $("import-file").click(); return; }
+  const id = c.dataset.close || c.dataset.del, x = all.find((y) => String(y.id) === id);
+  if (!x) return;
+  const coin = (S.bySym[x.sym] || {}).coin || x.sym;
+  if (c.dataset.del) {
+    if (!confirm(t("ask_delete", { coin }))) return;
+    jSave(all.filter((y) => y !== x));
+  } else {
+    const v = num(prompt(t("ask_exit", { coin }), fmtNum(price(x.sym))) || "");
+    if (!(v > 0)) return;
+    x.closed = { price: v, date: today10() };
+    jSave(all);
+  }
+  renderJournal();
+  fitAll();
+}
+
+function jImport(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      const incoming = (Array.isArray(d.trades) ? d.trades : []).map(jClean).filter(Boolean);
+      if (!incoming.length) throw new Error("empty");
+      const all = jLoad(), ids = new Set(all.map((y) => String(y.id)));
+      const add = incoming.filter((y) => !ids.has(String(y.id)));
+      jSave(all.concat(add));
+      alert(t("imported", { n: add.length }));
+      renderJournal();
+      fitAll();
+    } catch (err) { alert(t("import_bad")); }
+    e.target.value = "";
+  };
+  rd.readAsText(file);
+}
+
 /* ---------- Позиции ---------- */
 
 function renderPositions() {
+  renderJournal();
   const ps = S.data.positions;
   if (!ps.length) { $("positions").innerHTML = `<div class="card empty">${esc(t("no_pos"))}</div>`; return; }
   $("positions").innerHTML = ps.map((p) => {
@@ -506,6 +692,7 @@ const FIT = [
   [".meter .line", [".val", ".lab"], 11],
   [".history li", [".act", ".res", ".when"], 11],
   [".phead", [".cname", ".since"], 11],
+  [".jsum", [".num"], 11],
   [".chead", [".name", ".meta"], 11],
   [".tabbar button", [":scope > span:last-child"], 10],
 ];
@@ -605,6 +792,12 @@ $("positions").addEventListener("click", (e) => {
   const card = e.target.closest(".pcard[data-sym]");
   if (card) openCoin(card.dataset.sym);
 });
+$("entered-btn").addEventListener("click", openSheet);
+$("sheet-close").addEventListener("click", () => { $("sheet").hidden = true; });
+$("sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") $("sheet").hidden = true; });
+$("entry-form").addEventListener("submit", saveSheet);
+$("journal").addEventListener("click", jAction);
+$("import-file").addEventListener("change", jImport);
 $("search").addEventListener("input", (e) => { S.query = e.target.value; renderMarket(); fitAll(); });
 $("lang").addEventListener("click", () => {
   S.lang = S.lang === "ru" ? "en" : "ru";
