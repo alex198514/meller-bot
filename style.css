@@ -363,14 +363,21 @@ html.le360 .lrow { left: 34px; padding: 0 8px; gap: 6px; }
 }
 
 /* ---------- bubbles: full-screen overlay opened from the Market tab ---------- */
-.search-row { display: flex; gap: 8px; align-items: stretch; }
-.search-row #search { flex: 1 1 auto; min-width: 0; }
-.bub-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border-radius: 14px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line-2); color: var(--text); font-weight: 800; font-size: 16px; white-space: nowrap; }
+.bub-btn { width: 100%; margin: 14px 0 4px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px;
+  border-radius: 14px; cursor: pointer; background: var(--card); border: 1px solid var(--line-2); color: var(--text);
+  font-weight: 800; font-size: 17px; white-space: nowrap; box-shadow: var(--shadow); }
 .bub-btn:active { background: var(--card-2); }
-.bub-btn svg { width: 22px; height: 22px; fill: rgba(34, 211, 138, 0.18); stroke: var(--green); stroke-width: 1.8; }
-html.lt360 .bub-btn span { display: none; }
-html.lt360 .bub-btn { padding: 0 12px; }
+.bub-btn svg { width: 24px; height: 24px; fill: rgba(34, 211, 138, 0.18); stroke: var(--green); stroke-width: 1.8; }
+
+/* ---------- heatmap (Overview tab) ---------- */
+.heat { position: relative; width: 100%; border-radius: var(--radius); overflow: hidden; background: var(--card);
+  border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.ht { position: absolute; box-sizing: border-box; border: 1px solid var(--bg-top); overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  color: #f2f5fb; line-height: 1.1; -webkit-tap-highlight-color: transparent; transition: background-color .4s; }
+.ht:active { filter: brightness(1.25); }
+.ht b { font-weight: 800; white-space: nowrap; }
+.ht span { font-weight: 700; white-space: nowrap; opacity: 0.9; font-variant-numeric: tabular-nums; }
 .bubbles-overlay { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
   background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
   padding: calc(8px + var(--sa-t)) calc(var(--side) + var(--sa-r)) calc(8px + var(--sa-b)) calc(var(--side) + var(--sa-l)); }

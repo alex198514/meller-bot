@@ -3,11 +3,12 @@
 
 const I18N = {
   ru: {
-    tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_challenge: "Челлендж", tab_news: "Новости",
+    tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_overview: "Обзор", tab_news: "Новости",
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ делистинг", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} д назад", ago_now: "только что",
-    bubbles_btn: "Пузыри", close: "Закрыть",
+    bubbles_btn: "Пузыри", close: "Закрыть", heat_title: "Тепловая карта",
+    heat_hint: "Площадь — объём за 24ч, цвет — изменение за {p}. Нажмите на монету.", heat_loading: "загрузка изменений за {p}…",
     fng_title: "Индекс страха и жадности", fng_yday: "Вчера", fng_week: "Неделю назад", fng_30: "За 30 дней",
     fng_ef: "Крайний страх", fng_f: "Страх", fng_n: "Нейтрально", fng_g: "Жадность", fng_eg: "Крайняя жадность",
     bubble_hint: "Размер — объём за 24ч, цвет — изменение за {p}. <i class=\"ring\"></i> до пробоя ≤ {n}%. Нажмите на монету.",
@@ -45,11 +46,12 @@ const I18N = {
     loading: "загрузка…", load_fail: "Не удалось загрузить data.json",
   },
   en: {
-    tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_challenge: "Challenge", tab_news: "News",
+    tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_overview: "Overview", tab_news: "News",
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ delisting", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", ago_now: "just now",
-    bubbles_btn: "Bubbles", close: "Close",
+    bubbles_btn: "Bubbles", close: "Close", heat_title: "Heatmap",
+    heat_hint: "Area is 24h volume, colour the {p} change. Tap a coin.", heat_loading: "loading {p} changes…",
     fng_title: "Fear & Greed Index", fng_yday: "Yesterday", fng_week: "Last week", fng_30: "Last 30 days",
     fng_ef: "Extreme Fear", fng_f: "Fear", fng_n: "Neutral", fng_g: "Greed", fng_eg: "Extreme Greed",
     bubble_hint: "Size is 24h volume, colour the {p} change. <i class=\"ring\"></i> within {n}% of a breakout. Tap a coin.",
@@ -310,6 +312,7 @@ function applyLive() {
   }
   if (fit) fitAll();
   if (B.still && bubblesOn()) drawBubbles();                  // reduced motion: no animation loop, redraw on new prices
+  if (S.tab === "overview") for (const sym of dirty) heatTile(sym);
 }
 
 async function loadNews() {
@@ -376,8 +379,6 @@ function sparkline(sym) {
 const barClass = (d) => (d <= S.data.rules.near_pct ? "near" : d <= 10 ? "mid" : "");
 
 function renderMarket() {
-  renderFng();
-  if (B.open) syncView();
   $("search").placeholder = t("search");
   $("near-title").textContent = t("near_title");
   $("near-explain").textContent = t("near_explain");
@@ -536,6 +537,103 @@ function renderFng() {
   animateNeedle(now.v);
 }
 
+
+/* ---------- Overview: Fear & Greed, heatmap (treemap of the 75 coins), bubbles button ---------- */
+
+const H = { w: 0, h: 0, rects: {} };
+
+function renderOverview() {
+  renderFng();
+  renderHeat();
+}
+
+/** Squarified treemap: items [{a}] sorted by area (desc), laid out in the rectangle x, y, w, h. */
+function squarify(items, x, y, w, h) {
+  const out = [];
+  const worst = (sum, min, max, side) => Math.max((side * side * max) / (sum * sum), (sum * sum) / (side * side * min));
+  let i = 0;
+  while (i < items.length && w > 0.5 && h > 0.5) {
+    const side = Math.min(w, h);
+    let j = i + 1, sum = items[i].a, max = items[i].a, min = items[i].a, best = worst(sum, min, max, side);
+    while (j < items.length) {
+      const a = items[j].a, s2 = sum + a, w2 = worst(s2, Math.min(min, a), Math.max(max, a), side);
+      if (w2 > best) break;
+      sum = s2; min = Math.min(min, a); max = Math.max(max, a); best = w2; j++;
+    }
+    const thick = sum / side;
+    let off = 0;
+    for (let k = i; k < j; k++) {
+      const len = items[k].a / thick;
+      out.push(w >= h ? { it: items[k], x, y: y + off, w: thick, h: len } : { it: items[k], x: x + off, y, w: len, h: thick });
+      off += len;
+    }
+    if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+    i = j;
+  }
+  return out;
+}
+
+/** Tile colour: from the card colour towards green / red, stronger for bigger moves (full at the period's scale). */
+function heatColor(ch) {
+  if (ch == null) return "rgb(38,48,74)";
+  const a = 0.18 + 0.82 * Math.min(1, Math.abs(ch) / PERIOD_SCALE[B.period]);
+  const base = [31, 42, 71], to = ch >= 0 ? [22, 170, 108] : [214, 64, 82];
+  return "rgb(" + base.map((v, i) => Math.round(v + (to[i] - v) * a)).join(",") + ")";
+}
+
+const pctText = (ch) => (ch == null ? "—" : (ch >= 0 ? "+" : "−") + Math.abs(ch).toFixed(Math.abs(ch) < 10 ? 2 : 1) + "%");
+
+/** Lay out the 75 tiles (area = 24h quote volume) and draw them. */
+function renderHeat() {
+  if (!S.data) return;
+  const box = $("heat");
+  const pl = { "1h": "1H", "24h": "24H", "7d": "7D" }[B.period];
+  const waiting = B.period !== "24h" && !Object.keys(B.base[B.period]).length;
+  $("heat-hint").textContent = waiting ? t("heat_loading", { p: pl }) : t("heat_hint", { p: pl });
+  document.querySelectorAll(".period-seg button").forEach((x) => x.classList.toggle("on", x.dataset.p === B.period));
+  if (B.period !== "24h") loadPeriod(B.period);
+  const w = box.clientWidth;
+  if (!w) return;
+  const h = Math.round(Math.min(560, Math.max(340, w * 1.25)));
+  box.style.height = h + "px";
+  const syms = S.data.symbols.map((s) => s.symbol);
+  const vols = syms.map((s) => (S.live[s] && S.live[s].qv > 0 ? S.live[s].qv : 0));
+  const known = vols.filter((v) => v > 0).sort((a, b) => a - b);
+  const med = known.length ? known[known.length >> 1] : 1;
+  const items = syms.map((s, i) => ({ sym: s, v: vols[i] > 0 ? vols[i] : med }));
+  const total = items.reduce((a, x) => a + x.v, 0);
+  // inner size: the box has a 1px border
+  const iw = w - 2, ih = h - 2;
+  items.forEach((x) => { x.a = (x.v / total) * iw * ih; });
+  items.sort((a, b) => b.a - a.a);
+  H.w = w; H.h = h; H.rects = {};
+  box.innerHTML = squarify(items, 0, 0, iw, ih).map((r) => {
+    const sym = r.it.sym;
+    H.rects[sym] = r;
+    return `<div class="ht" role="listitem" data-sym="${esc(sym)}" style="left:${r.x.toFixed(2)}px;top:${r.y.toFixed(2)}px;width:${r.w.toFixed(2)}px;height:${r.h.toFixed(2)}px"></div>`;
+  }).join("");
+  for (const sym of syms) heatTile(sym);
+}
+
+/** Colour and text of one tile (called on every live price change of that coin). */
+function heatTile(sym) {
+  const r = H.rects[sym];
+  if (!r) return;
+  const el = $("heat").querySelector(`.ht[data-sym="${sym}"]`);
+  if (!el) return;
+  const coin = S.bySym[sym].coin, ch = bubbleChange(sym);
+  el.style.backgroundColor = heatColor(ch);
+  const pct = pctText(ch);
+  el.setAttribute("aria-label", `${coin} ${pct}`);
+  // name size: limited by the tile width (≈0.66 em per letter) and height
+  const fs = Math.min(26, (r.w - 6) / (coin.length * 0.66), r.h * 0.36);
+  if (fs < 8 || r.h < 13) { if (el.innerHTML) el.innerHTML = ""; return; }
+  const ps = Math.max(8, Math.min(fs * 0.78, (r.w - 6) / (pct.length * 0.6)));
+  const both = r.h >= fs * 1.15 + ps * 1.25 + 4 && ps >= 8 && (r.w - 6) >= pct.length * 0.6 * 8;
+  const html = `<b style="font-size:${fs.toFixed(1)}px">${esc(coin)}</b>${both ? `<span style="font-size:${ps.toFixed(1)}px">${pct}</span>` : ""}`;
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+
 /* ---------- bubbles: one circle per coin, size = 24h quote volume, colour = change over the chosen period ---------- */
 
 const B = {
@@ -547,7 +645,7 @@ const B = {
 };
 const PERIOD_SCALE = { "1h": 3, "24h": 10, "7d": 25 };        // |change| at which the colour is at full strength
 const reducedMotion = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
-const bubblesOn = () => !!S.data && S.tab === "market" && B.open && !document.hidden;
+const bubblesOn = () => !!S.data && S.tab === "overview" && B.open && !document.hidden;
 
 function openBubbles() {
   if (!S.data) return;
@@ -569,7 +667,7 @@ function closeBubbles() {
 function syncView() {
   const bub = B.open;
   $("bubble-close").setAttribute("aria-label", t("close"));
-  document.querySelectorAll("#period-switch button").forEach((b) => b.classList.toggle("on", b.dataset.p === B.period));
+  document.querySelectorAll(".period-seg button").forEach((b) => b.classList.toggle("on", b.dataset.p === B.period));
   const pl = { "1h": "1H", "24h": "24H", "7d": "7D" }[B.period];
   const waiting = B.period !== "24h" && !Object.keys(B.base[B.period]).length;
   $("bubble-hint").innerHTML = waiting ? esc(t("bubble_loading", { p: pl }))
@@ -615,6 +713,7 @@ async function loadPeriod(p) {
   B.base[p] = Object.assign(B.base[p], out);
   B.loading[p] = false;
   if (B.open) { syncView(); if (B.still) drawBubbles(); }
+  if (S.tab === "overview") renderHeat();
 }
 
 /** Box size: whatever the full-screen overlay leaves under its header (CSS flex). */
@@ -774,7 +873,11 @@ function stopBubbles() {
   if (B.raf) cancelAnimationFrame(B.raf);
   B.raf = 0;
 }
-setInterval(() => { if (bubblesOn()) loadPeriod(B.period); }, 60 * 1000);
+setInterval(() => {                                          // 1H / 7D bases once a minute; the heatmap re-lays out with new volumes
+  if (!S.data || document.hidden || S.tab !== "overview") return;
+  loadPeriod(B.period);
+  renderHeat();
+}, 60 * 1000);
 
 /* ---------- Сигнал ---------- */
 
@@ -1114,57 +1217,6 @@ function renderPositions() {
 
 /* ---------- Челлендж ---------- */
 
-function meter(label, value, frac, kind) {
-  const f = Math.max(0, Math.min(1, frac));
-  return `<div class="meter"><div class="line"><span class="lab">${esc(label)}</span>${N(value, "val")}</div>
-    <div class="bar ${kind}"><i style="width:${(100 * f).toFixed(1)}%"></i></div></div>`;
-}
-
-function renderChallenge() {
-  const chs = S.data.challenges;
-  const money = (x) => "$" + x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  $("challenges").innerHTML = chs.map((c) => {
-    const pnl = 100 * (c.equity / c.start_balance - 1);
-    const sev = (f) => (f >= 0.8 ? "danger" : f >= 0.5 ? "warn" : "");
-    const dF = c.daily_used_pct / c.daily_loss_pct, mF = c.max_used_pct / c.max_loss_pct;
-    const kind = c.name === "A" ? t("trailing") : "TP 2R+4R";
-    return `<div class="card ccard"><div class="chead"><span class="name">${esc(t("challenge"))} ${esc(c.name)}</span>
-        <span class="meta">${esc(t("attempt"))} #${c.attempt} · ${esc(t("phase"))} ${c.phase} · ${esc(kind)}</span></div>
-      ${c.status === "passed" ? `<div class="ceq"><span class="big up">${esc(t("passed"))}</span></div>` : `
-      <div class="ceq">${N(money(c.equity), "big")}${N(sgn(pnl) + "%", "pct " + cls(pnl))}</div>
-      <div class="cbal">${esc(t("balance"))} ${N(money(c.balance))}</div>
-      ${meter(`${t("target")} +${c.target_pct}%`, `${Math.max(0, pnl).toFixed(2)}% / ${c.target_pct}%`, pnl / c.target_pct, "")}
-      ${meter(t("daily"), `${c.daily_used_pct.toFixed(1)}% / ${c.daily_loss_pct}%`, dF, sev(dF))}
-      ${meter(t("maxloss"), `${c.max_used_pct.toFixed(1)}% / ${c.max_loss_pct}%`, mF, sev(mF))}
-      ${meter(t("days"), `${c.trading_days} / ${c.min_days}`, c.trading_days / c.min_days, "days")}`}
-    </div>`;
-  }).join("");
-
-  $("curve-title").textContent = t("curve");
-  const enough = chs.some((c) => c.curve.length >= 2);
-  $("curve-hint").textContent = enough ? "" : t("curve_hint");
-  $("curve-card").hidden = !enough;
-  destroyCharts();
-  if (enough && S.tab === "challenge" && typeof LightweightCharts !== "undefined") {
-    S.curveChart = LightweightCharts.createChart($("curve"), CHART_THEME());
-    const colors = { A: "#4c8dff", B: "#22d38a" };
-    chs.forEach((c) => {
-      if (c.curve.length < 2) return;
-      const s = S.curveChart.addLineSeries({ color: colors[c.name] || "#f2f5fb", lineWidth: 2, title: c.name });
-      s.setData(c.curve.map(([d, eq]) => ({ time: d, value: eq })));
-    });
-    S.curveChart.timeScale().fitContent();
-  }
-
-  $("history-title").textContent = t("history");
-  const ev = S.data.events.slice().reverse();
-  $("history").innerHTML = ev.length ? ev.map((e) => `<li class="card">${badge(e.symbol, e.coin)}
-      <div class="what"><div class="act">${esc(e.coin)} · ${esc(t(e.action))} · ${esc(e.variant)}</div>
-        <div class="when">${N(esc(e.date))} · ${N(fmt(e.price))}</div></div>
-      ${e.r == null || e.action === "OPEN" ? "" : N(sgn(e.r) + "R", "res " + cls(e.r))}
-    </li>`).join("") : `<li class="card"><span class="when">${esc(t("no_history"))}</span></li>`;
-}
-
 /* ---------- Новости ---------- */
 
 function ago(iso) {
@@ -1242,7 +1294,11 @@ function fitAll() {
     }
   }
 }
-window.addEventListener("resize", () => { fitAll(); if (bubblesOn()) startBubbles(true); });
+window.addEventListener("resize", () => {
+  fitAll();
+  if (bubblesOn()) startBubbles(true);
+  if (S.data && S.tab === "overview" && $("heat").clientWidth !== H.w) renderHeat();
+});
 // desktop-mode zoom changed (index.html): rebuild the charts at the new size and re-fit the lines
 window.addEventListener("mb-zoom", () => { destroyCharts(); render(); if (bubblesOn()) startBubbles(true); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitAll());   // Manrope changes the widths
@@ -1257,7 +1313,7 @@ function destroyCharts() {
 function show(tab) {
   if (tab !== S.tab) destroyCharts();
   if (tab !== "signal") wsKline(null);
-  if (tab !== "market") closeBubbles();
+  if (tab !== "overview") closeBubbles();
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -1271,18 +1327,20 @@ function render() {
   if (S.tab === "market") renderMarket();
   if (S.tab === "signal") renderSignal();
   if (S.tab === "positions") renderPositions();
-  if (S.tab === "challenge") renderChallenge();
+  if (S.tab === "overview") renderOverview();
   if (S.tab === "news") renderNews();
   fitAll();
 }
 
 function openCoin(sym) { S.coin = sym; show("signal"); }
 
-/** Deep links: #signal/BTCUSDT, #challenge, ... Sets the coin; returns the tab named in the hash (or the current one). */
+/** Deep links: #signal/BTCUSDT, #overview, ... Sets the coin; returns the tab named in the hash (or the current one).
+ *  The old #challenge link (the tab is gone) opens the Overview. */
 function hashTab() {
-  const [tab, coin] = location.hash.slice(1).split("/");
+  let [tab, coin] = location.hash.slice(1).split("/");
   if (coin && S.bySym[coin]) S.coin = coin;
-  return ["market", "signal", "positions", "news", "challenge"].includes(tab) ? tab : S.tab;
+  if (tab === "challenge") tab = "overview";
+  return ["market", "signal", "positions", "news", "overview"].includes(tab) ? tab : S.tab;
 }
 window.addEventListener("hashchange", () => { if (S.data) show(hashTab()); });
 
@@ -1317,7 +1375,7 @@ async function init() {
   setInterval(async () => {                                   // Fear & Greed: every 10 minutes while the app is open
     if (document.hidden) return;
     await loadFng();
-    if (S.tab === "market") { renderFng(); fitAll(); }
+    if (S.tab === "overview") { renderFng(); fitAll(); }
   }, 10 * 60 * 1000);
 }
 
@@ -1364,12 +1422,19 @@ $("fng").addEventListener("click", () => { S.fngOpen = !S.fngOpen; renderFng(); 
 $("fng").addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); S.fngOpen = !S.fngOpen; renderFng(); }
 });
-$("period-switch").addEventListener("click", (e) => {
+document.querySelectorAll(".period-seg").forEach((seg) => seg.addEventListener("click", (e) => {   // shared: heatmap + bubbles
   const b = e.target.closest("button[data-p]");
   if (!b || b.dataset.p === B.period) return;
   B.period = b.dataset.p;
   storeSet("meller_bubble_period", B.period);
-  syncView();
+  document.querySelectorAll(".period-seg button").forEach((x) => x.classList.toggle("on", x.dataset.p === B.period));
+  loadPeriod(B.period);
+  if (B.open) syncView();
+  renderHeat();
+}));
+$("heat").addEventListener("click", (e) => {
+  const tile = e.target.closest(".ht[data-sym]");
+  if (tile) openCoin(tile.dataset.sym);
 });
 (function () {                                               // tap a bubble: open that coin on the Signal tab
   const cv = $("bubbles");

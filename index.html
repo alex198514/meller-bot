@@ -31,16 +31,16 @@
     })();
   </script>
   <meta name="theme-color" content="#0a0f1e">
-  <meta name="description" content="Meller Bot: daily 20-day breakout signals on 75 crypto coins, paper trading and prop challenge progress.">
+  <meta name="description" content="Meller Bot: daily 20-day breakout signals on 75 crypto coins, paper trading and a market overview.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Meller Bot">
-  <link rel="manifest" href="manifest.json?v=17">
+  <link rel="manifest" href="manifest.json?v=18">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>Meller Bot</title>
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -60,15 +60,7 @@
 
   <main id="main">
     <section class="tab" id="tab-market">
-      <div class="search-row">
-        <input id="search" type="search" autocomplete="off" spellcheck="false">
-        <button class="bub-btn" id="bubbles-btn" type="button" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="9" r="5"/><circle cx="17" cy="7" r="3"/><circle cx="15.5" cy="16.5" r="4"/></svg>
-          <span data-t="bubbles_btn"></span>
-        </button>
-      </div>
-      <div class="card fng" id="fng" role="button" tabindex="0" aria-expanded="false" hidden></div>
-      <a class="attr" id="fng-attr" href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener" hidden>Data: alternative.me</a>
+      <input id="search" type="search" autocomplete="off" spellcheck="false">
       <div class="list-head">
         <h2 id="near-title"></h2>
         <button class="info" id="near-info" type="button" aria-expanded="false" aria-controls="near-explain">i</button>
@@ -105,13 +97,21 @@
       <div id="news-list"></div>
     </section>
 
-    <section class="tab" id="tab-challenge" hidden>
-      <div id="challenges"></div>
-      <h2 class="h2" id="curve-title"></h2>
-      <div class="card chart-card" id="curve-card"><div class="chart small" id="curve"></div></div>
-      <p class="hint" id="curve-hint"></p>
-      <h2 class="h2" id="history-title"></h2>
-      <ul class="history" id="history"></ul>
+    <section class="tab" id="tab-overview" hidden>
+      <div class="card fng" id="fng" role="button" tabindex="0" aria-expanded="false" hidden></div>
+      <a class="attr" id="fng-attr" href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener" hidden>Data: alternative.me</a>
+      <h2 class="h2" id="heat-title" data-t="heat_title"></h2>
+      <div class="seg three period-seg" id="heat-period" role="tablist">
+        <button type="button" data-p="1h">1H</button>
+        <button type="button" data-p="24h" class="on">24H</button>
+        <button type="button" data-p="7d">7D</button>
+      </div>
+      <p class="bhint" id="heat-hint"></p>
+      <div class="heat" id="heat" role="list"></div>
+      <button class="bub-btn" id="bubbles-btn" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="9" r="5"/><circle cx="17" cy="7" r="3"/><circle cx="15.5" cy="16.5" r="4"/></svg>
+        <span data-t="bubbles_btn"></span>
+      </button>
     </section>
 
     <footer class="foot">built with Claude Code · @meller_ai · not financial advice</footer>
@@ -138,7 +138,7 @@
       <h2 id="bubble-title" data-t="bubbles_btn"></h2>
       <button class="bub-close" id="bubble-close" type="button" data-label="close">×</button>
     </div>
-    <div class="seg three" id="period-switch" role="tablist">
+    <div class="seg three period-seg" id="period-switch" role="tablist">
       <button type="button" data-p="1h">1H</button>
       <button type="button" data-p="24h" class="on">24H</button>
       <button type="button" data-p="7d">7D</button>
@@ -164,13 +164,13 @@
       <span class="ico"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path class="ln" d="M17 9h3v8a2 2 0 0 1-2 2M7.5 9h6M7.5 12.5h6M7.5 16h4"/></svg></span>
       <span data-t="tab_news"></span>
     </button>
-    <button data-tab="challenge" type="button">
-      <span class="ico"><svg viewBox="0 0 24 24"><path d="M7.5 4h9v5.5a4.5 4.5 0 0 1-9 0z"/><path class="ln" d="M12 14v4M8 20.5h8M16.5 5.5h3v1.5a3.5 3.5 0 0 1-3.5 3.5M7.5 5.5h-3v1.5A3.5 3.5 0 0 0 8 10.5"/></svg></span>
-      <span data-t="tab_challenge"></span>
+    <button data-tab="overview" type="button">
+      <span class="ico"><svg viewBox="0 0 24 24"><path d="M3 17.5a9 9 0 0 1 18 0z"/><path class="ln" d="M12 17.5l4.2-5.3M3 17.5h18"/></svg></span>
+      <span data-t="tab_overview"></span>
     </button>
   </nav>
 
   <script data-goatcounter="https://mellerbot.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
