@@ -492,3 +492,31 @@ html.le360 .pill { padding: 6px 8px; }
 .lvl-legend i.bot { border-top: 2px solid var(--blue); }
 .lvl-legend i.proj { border-top: 2px dashed var(--blue); }
 .lvl-proj { font-size: 15px; }
+
+/* ---------- bot results (Positions tab) ---------- */
+.bres { padding: 14px 14px 12px; margin-bottom: 12px; }
+.bres-head { font-size: 15px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+.bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+html.lt360 .bstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bstat { background: var(--card-2); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.bstat .k { display: block; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bstat .v { display: block; font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bstat .v small { font-size: 13px; font-weight: 700; }
+.bcurve { display: block; width: 100%; height: 72px; margin-top: 12px; }
+.bcurve-cap { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+.btrades { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.btrade { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.btrade .what { flex: 1 1 auto; min-width: 0; }
+.btrade .btop { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.btrade .cn { font-weight: 800; font-size: 17px; }
+.btrade .why { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.btrade .when { font-size: 13px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btrade .res { text-align: right; flex: 0 0 auto; }
+.btrade .res .r { display: block; font-weight: 800; font-size: 18px; }
+.btrade .res .usd { display: block; font-size: 13px; font-weight: 700; }
+/* bot results: wrap instead of cutting off (balance %, long exit reasons, dates and prices) */
+.bstat .v small { display: block; margin-top: 1px; }
+.btrade .btop { flex-wrap: wrap; row-gap: 2px; }
+.btrade .why { white-space: normal; overflow: visible; }
+.btrade .when { white-space: normal; overflow: visible; line-height: 1.35; }
+.bstat .v { white-space: normal; }

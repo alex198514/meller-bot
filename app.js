@@ -34,6 +34,10 @@ const I18N = {
     above_skip: "Цена выше уровня {lvl}, но сегодняшняя свеча уже {x} ATR: если закроется так, бот пропустит вход.",
     in_pos: "Позиция {v} открыта {date}: сейчас {r}, стоп {stop}.",
     no_pos: "Нет открытых позиций. Бот ждёт пробоя.", since: "с {date}",
+    bot_results: "Результаты бота", br_head: "Виртуальный счёт $10 000, риск 0.5% на сделку (стратегия B)",
+    br_since: "Старт", br_trades: "Закрыто сделок", br_win: "Прибыльных", br_r: "Итого R", br_bal: "Баланс", br_dd: "Просадка от пика",
+    br_none: "Закрытых сделок пока нет. Бот торгует с {d} и ждёт первый пробой.",
+    rs_stop: "стоп", rs_be: "стоп в безубытке", rs_trail: "трейлинг", br_now: "сейчас",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
     f_bad: "Проверьте числа: стоп должен быть ниже входа, размер больше нуля.", my_none: "Открытых сделок нет. Нажмите «Я вошёл» на вкладке Сигнал.",
@@ -81,6 +85,10 @@ const I18N = {
     above_skip: "Price is above {lvl}, but today's candle is {x} ATR: if it closes like this, the bot will skip the entry.",
     in_pos: "Position {v} opened {date}: now {r}, stop {stop}.",
     no_pos: "No open positions. The bot is waiting for a breakout.", since: "since {date}",
+    bot_results: "Bot results", br_head: "Virtual $10,000 account, 0.5% risk per trade (strategy B)",
+    br_since: "Start", br_trades: "Closed trades", br_win: "Win rate", br_r: "Total R", br_bal: "Balance", br_dd: "Drawdown",
+    br_none: "No closed trades yet. The bot has been trading since {d} and is waiting for its first breakout.",
+    rs_stop: "stop", rs_be: "breakeven stop", rs_trail: "trailing", br_now: "now",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
     f_bad: "Check the numbers: the stop must be below the entry and the size above zero.", my_none: "No open trades. Tap \u201cI entered\u201d on the Signal tab.",
@@ -1349,8 +1357,76 @@ function jImport(e) {
 
 /* ---------- Позиции ---------- */
 
+/* ---------- bot results: strategy B since its start, from data.json "bot" (paper.py's journal) ---------- */
+
+const dayLabel = (d, long) => new Date(d + "T00:00:00Z").toLocaleDateString(S.lang === "ru" ? "ru-RU" : "en-US",
+  long ? { day: "numeric", month: "long", timeZone: "UTC" } : { day: "numeric", month: "short", timeZone: "UTC" }).replace(/ /g, "\u00a0");
+const usdSigned = (x) => (x < 0 ? "−$" : "+$") + Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Daily closed-P&L balance since the start: $10,000 + every booked exit (R x the risk per trade). */
+function botSeries(bot) {
+  const today = new Date().toISOString().slice(0, 10), out = [];
+  const booked = bot.booked.slice().sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  let bal = bot.balance0, k = 0;
+  for (let d = Date.parse(bot.since + "T00:00:00Z"); d <= Date.parse(today + "T00:00:00Z"); d += 86400000) {
+    const ds = new Date(d).toISOString().slice(0, 10);
+    while (k < booked.length && booked[k][0] <= ds) bal += booked[k++][1] * bot.risk_usd;
+    out.push([ds, bal]);
+  }
+  while (k < booked.length) bal += booked[k++][1] * bot.risk_usd;
+  if (!out.length) out.push([today, bal]);
+  return { series: out, balance: bal };
+}
+
+function renderBotResults() {
+  $("bot-res-title").textContent = t("bot_results");
+  const bot = S.data.bot;
+  if (!bot) { $("bot-results").innerHTML = ""; return; }
+  const { series, balance } = botSeries(bot);
+  // open B positions at the live price: only the part not booked yet (booked parts are already in the balance)
+  const openUsd = S.data.positions.filter((p) => p.variant === "B")
+    .reduce((a, p) => a + (liveR(p, price(p.symbol)) - (p.booked_r || 0)) * bot.risk_usd, 0);
+  const eqNow = balance + openUsd;
+  const pts = series.map((x) => x[1]);
+  pts[pts.length - 1] = eqNow;
+  const peak = Math.max(bot.balance0, ...pts), dd = peak > 0 ? (100 * (peak - eqNow)) / peak : 0;
+  const tr = bot.trades, n = tr.length, wins = tr.filter((x) => x.r > 0).length, totR = tr.reduce((a, x) => a + x.r, 0);
+  const chg = balance - bot.balance0, chgPct = (100 * chg) / bot.balance0;
+  const stat = (k, v, c = "") => `<div class="bstat"><span class="k">${esc(k)}</span><span class="v ${c}">${v}</span></div>`;
+  const lo = Math.min(...pts, bot.balance0), hi = Math.max(...pts, bot.balance0), span = hi - lo || 1;
+  const X = (i) => (pts.length > 1 ? (300 * i) / (pts.length - 1) : 150), Y = (v) => (hi === lo ? 36 : 66 - (60 * (v - lo)) / span);
+  const line = pts.length > 1 ? pts.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")
+    : `0,${Y(pts[0]).toFixed(1)} 300,${Y(pts[0]).toFixed(1)}`;
+  const col = eqNow >= bot.balance0 ? PAL().up : PAL().down;
+  const curve = `<svg class="bcurve" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" x2="300" y1="${Y(bot.balance0).toFixed(1)}" y2="${Y(bot.balance0).toFixed(1)}" stroke="${PAL().muted}" stroke-opacity="0.6" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+      <polyline points="0,72 ${line} 300,72" fill="${col}" fill-opacity="0.08" stroke="none"/>
+      <polyline points="${line}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>
+    <div class="bcurve-cap"><span>${esc(dayLabel(bot.since))} · $${bot.balance0.toLocaleString("en-US")}</span><span>${esc(t("br_now"))} · ${N(fmt(eqNow))}</span></div>`;
+  const summary = `<div class="card bres"><div class="bres-head">${esc(t("br_head"))}</div><div class="bstats">
+      ${stat(t("br_since"), esc(dayLabel(bot.since, S.lang === "ru")))}
+      ${stat(t("br_trades"), N(String(n)))}
+      ${stat(t("br_win"), n ? N(Math.round((100 * wins) / n) + "%") : "—")}
+      ${stat(t("br_r"), N(sgn(totR) + "R"), n ? cls(totR) : "")}
+      ${stat(t("br_bal"), `${N(usdSigned(chg))} <small>${N(sgn(chgPct) + "%")}</small>`, chg ? cls(chg) : "")}
+      ${stat(t("br_dd"), N(dd.toFixed(2) + "%"), dd > 0.005 ? "down" : "")}
+    </div>${curve}</div>`;
+  const reason = (x) => [...x.hits, x.reason === "CLOSE_BE" ? t("rs_be") : x.reason === "CLOSE_TRAIL" ? t("rs_trail") : t("rs_stop")].join(" → ");
+  const newest = tr.slice().sort((a, b) => (a.exit_date < b.exit_date ? 1 : a.exit_date > b.exit_date ? -1 : 0));
+  const list = n ? `<ul class="btrades">${newest.map((x) => {
+      const usd = x.r * bot.risk_usd;
+      return `<li class="card btrade" data-sym="${esc(x.symbol)}">${badge(x.symbol, x.coin)}
+        <div class="what"><div class="btop"><span class="cn">${esc(x.coin)}</span><span class="why">${esc(reason(x))}</span></div>
+          <div class="when">${esc(dayLabel(x.entry_date))} ${N(fmt(x.entry))} → ${esc(dayLabel(x.exit_date))} ${N(fmt(x.exit))}</div></div>
+        <div class="res">${N(sgn(x.r) + "R", "r " + cls(x.r))}${N(usdSigned(usd), "usd " + cls(usd))}</div></li>`;
+    }).join("")}</ul>`
+    : `<div class="card empty small">${esc(t("br_none", { d: dayLabel(bot.since, true) }))}</div>`;
+  $("bot-results").innerHTML = summary + list;
+}
+
 function renderPositions() {
   renderJournal();
+  renderBotResults();
   const ps = S.data.positions;
   if (!ps.length) { $("positions").innerHTML = `<div class="card empty">${esc(t("no_pos"))}</div>`; return; }
   $("positions").innerHTML = ps.map((p) => {
