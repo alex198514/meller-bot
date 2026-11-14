@@ -474,3 +474,21 @@ html.le360 .logo { display: none; }
 html.le360 .top { gap: 6px; }
 html.le360 .top-right { gap: 6px; }
 html.le360 .pill { padding: 6px 8px; }
+
+/* ---------- levels: status chip (Market), no-signal card, 20-candle levels legend (Signal) ---------- */
+.stc { display: inline-block; font-size: 13px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.stc.far { color: var(--muted); background: rgba(var(--fg-rgb), 0.07); }
+.stc.near { color: var(--blue); background: rgba(var(--blue-rgb), 0.13); }
+.stc.at { color: var(--green); background: rgba(var(--green-rgb), 0.14); }
+.stc.above { color: var(--on-green); background: var(--green); }
+.dist .lbl small { font-size: 13px; font-weight: 700; color: var(--muted); margin-left: 5px; }
+.ldrop { font-size: 12px; font-weight: 700; color: var(--gold); text-align: right; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dim { opacity: 0.5; filter: grayscale(0.8); }
+.noplan { padding: 16px; margin-top: 12px; font-size: 17px; font-weight: 600; line-height: 1.4; }
+.noplan .k { display: block; font-size: 14px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.lvl-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 2px 8px; }
+.lvl-legend span { white-space: nowrap; }
+.lvl-legend i { display: inline-block; width: 18px; height: 0; border-top: 2px dotted var(--gold); vertical-align: middle; margin-right: 6px; }
+.lvl-legend i.bot { border-top: 2px solid var(--blue); }
+.lvl-legend i.proj { border-top: 2px dashed var(--blue); }
+.lvl-proj { font-size: 15px; }

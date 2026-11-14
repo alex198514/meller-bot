@@ -22,6 +22,10 @@ const I18N = {
     bull: "бычий", bear: "медвежий", side: "боковик", nodata: "нет данных",
     chip_wait: "ЖДЁМ ПРОБОЯ", chip_long: "LONG ОТКРЫТ",
     entry: "Вход", stop: "Стоп", now: "Сейчас", take: "Тейк", trailing: "трейлинг",
+    lv20: "Уровни 20 свечей (подсказка, не сигнал)", bot_level: "уровень бота (1D)", proj_level: "прогноз уровня",
+    lvl_drop: "Уровень опустится: {list}.", lvl_step: "через {n} до {p}", lvl_same: "Уровень не изменится в ближайшие 10 дней.",
+    no_signal_k: "Сигнала нет", no_signal: "Монета на {x}% ниже 20-дневного максимума ({lvl}). Бот покупает только пробой вверх.",
+    st_far: "далеко", st_near: "близко", st_at: "у уровня", st_above: "выше уровня", drop_soon: "↓ {p} через {n} дн",
     plan: "план, если будет пробой", plan_close: "план на закрытии сегодня",
     f_skip: "Свеча {x} ATR (фильтр {f} ATR): вход будет пропущен", f_ok: "Свеча {x} ATR: фильтр пройден, BUY на дневном закрытии",
     pos_note: "позиция {v} с {date}", level: "пробой",
@@ -65,6 +69,10 @@ const I18N = {
     bull: "bull", bear: "bear", side: "sideways", nodata: "no data",
     chip_wait: "WAITING", chip_long: "LONG OPEN",
     entry: "Entry", stop: "Stop", now: "Now", take: "Take", trailing: "trailing",
+    lv20: "20-candle levels (guide, not a signal)", bot_level: "bot level (1D)", proj_level: "projected level",
+    lvl_drop: "The level will drop: {list}.", lvl_step: "in {n} to {p}", lvl_same: "The level won't change in the next 10 days.",
+    no_signal_k: "No signal", no_signal: "The coin is {x}% below its 20-day high ({lvl}). The bot only buys an upside breakout.",
+    st_far: "far", st_near: "close", st_at: "at level", st_above: "above level", drop_soon: "↓ {p} in {n} d",
     plan: "plan if it breaks out", plan_close: "plan at today's close",
     f_skip: "Candle {x} ATR (filter {f} ATR): entry will be skipped", f_ok: "Candle {x} ATR: filter passed, BUY at the daily close",
     pos_note: "position {v} since {date}", level: "breakout",
@@ -305,6 +313,7 @@ function onKline(d) {
     const last = c.rows[c.rows.length - 1];
     if (last.time === bar.time) c.rows[c.rows.length - 1] = bar; else if (bar.time > last.time) c.rows.push(bar);
   }
+  if (S.lv && S.lv.sym === d.s && S.lv.tf === k.i) updateLv20();       // a candle closed / a new one began: levels move
   if (S.series && d.s === S.coin && k.i === S.tf) { try { S.series.update(bar); } catch (e) { /* older bar */ } }
 }
 
@@ -328,9 +337,7 @@ function applyLive() {
       el.classList.toggle("down", ch < 0);
     });
     document.querySelectorAll(`[data-dist="${sym}"]`).forEach((el) => {
-      const dd = dist(sym), bc = barClass(dd);
-      el.innerHTML = `<div class="lbl ${bc}">${dd <= 0 ? `<b>${esc(t("above"))}</b>` : `${esc(t("to_breakout"))} <b>${N(dd.toFixed(1) + "%")}</b>`}</div>
-        <div class="bar ${bc}"><i style="width:${(100 * fill(dd)).toFixed(1)}%"></i></div>`;
+      el.innerHTML = distHtml(sym);
     });
   }
   const now = Date.now();
@@ -338,8 +345,7 @@ function applyLive() {
     const mine = new Set(jLoad().map((x) => x.sym));
     if (S.tab === "signal" && dirty.has(S.coin)) {
       const L = levelsFor(S.coin);
-      renderLadder(S.coin, L);
-      $("sig-status").textContent = signalSentence(S.coin, L);
+      renderPlan(S.coin, L);
       S.lastSlow = now; fit = true;
     }
     if (S.tab === "positions" && [...dirty].some((s) => mine.has(s) || posOf(s))) {
@@ -429,16 +435,14 @@ function renderMarket() {
   more.hidden = !!q || all.length <= TOP_N;
   more.textContent = S.showAll ? t("show_top") : t("show_all", { n: all.length });
   $("coins").innerHTML = rows.map(({ s, d }) => {
-    const ch = change(s.symbol), pos = posOf(s.symbol), bc = barClass(d);
-    const lbl = d <= 0 ? `<b>${esc(t("above"))}</b>` : `${esc(t("to_breakout"))} <b>${N(d.toFixed(1) + "%")}</b>`;
+    const ch = change(s.symbol), pos = posOf(s.symbol);
     return `<li class="row" data-sym="${esc(s.symbol)}">
       <div class="l1">${badge(s.symbol, s.coin)}<span class="cname">${esc(s.coin)}</span>
         ${pos ? `<span class="vbadge">${esc(pos.variant)}</span>` : ""}
         ${ch == null ? "" : NL("chg", s.symbol, sgn(ch) + "%", "chg " + cls(ch))}
         ${NL("px", s.symbol, fmt(price(s.symbol)), "price")}</div>
       <div class="l2">${sparkline(s.symbol)}
-        <div class="dist" data-dist="${esc(s.symbol)}"><div class="lbl ${bc}">${lbl}</div>
-          <div class="bar ${bc}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div></div></div>
+        <div class="dist" data-dist="${esc(s.symbol)}">${distHtml(s.symbol)}</div></div>
     </li>`;
   }).join("");
 }
@@ -936,6 +940,103 @@ function levelsFor(sym) {
   return { open: false, above, entry, stop, tp1: entry + r.tp_r[0] * risk, tp2: entry + r.tp_r[1] * risk };
 }
 
+/* ---------- levels: status, projected daily level, plan zones ---------- */
+
+const ruDays = (n) => (n % 10 === 1 && n % 100 !== 11 ? "день" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "дня" : "дней");
+const nDays = (n) => (S.lang === "ru" ? `${n} ${ruDays(n)}` : `${n} ${n === 1 ? "day" : "days"}`);
+
+/** Status of a coin vs the bot's daily level: far (> 10% below), near (3-10%), at (within 3%), above. */
+function levelStatus(sym) {
+  const d = dist(sym), near = S.data.rules.near_pct;
+  return d <= 0 ? "above" : d <= near ? "at" : d <= 10 ? "near" : "far";
+}
+
+/** The 20-day high at the close of each of the next 10 days if no new highs come: from data.json (paper.py), else the
+    same rule on the exported daily candles (the oldest days leave the window; today's high so far stays). */
+function levelPath(sym) {
+  const s = S.bySym[sym];
+  if (s.level_path && s.level_path.length) return s.level_path;
+  const highs = s.ohlc.map((r) => r[2]), out = [];
+  const td = s.today && s.today[0] > s.last_day ? s.today[2] : null;
+  const d0 = Date.parse((s.today && s.today[0] > s.last_day ? s.today[0] : s.last_day) + "T00:00:00Z");
+  for (let k = 1; k <= 10; k++) {
+    const w = highs.slice(highs.length - 20 + k);
+    if (td != null) w.push(td);
+    if (!w.length) break;
+    out.push([new Date(d0 + k * 86400000).toISOString().slice(0, 10), Math.max(...w)]);
+  }
+  return out;
+}
+
+/** Steps down of the projected level: [{ n: days from now, p: level }]. */
+function levelSteps(sym) {
+  let prev = S.bySym[sym].level;
+  const steps = [];
+  levelPath(sym).forEach(([, p], k) => { if (p < prev * (1 - 1e-9)) { steps.push({ n: k + 1, p }); prev = p; } });
+  return steps;
+}
+
+/** "↓ $X in N d" when the daily level drops by more than 10% within 5 days (the first such day). */
+function levelDrop(sym) {
+  const lvl = S.bySym[sym].level, k = levelPath(sym).slice(0, 5).findIndex(([, p]) => p < 0.9 * lvl);
+  return k < 0 ? "" : t("drop_soon", { p: fmt(levelPath(sym)[k][1]), n: k + 1 });
+}
+
+function distHtml(sym) {
+  const d = dist(sym), st = levelStatus(sym), bc = barClass(d), drop = levelDrop(sym);
+  return `<div class="lbl"><span class="stc ${st}">${esc(t("st_" + st))}</span>${d > 0 ? `<small>${N(d.toFixed(1) + "%")}</small>` : ""}</div>
+    <div class="bar ${bc}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div>${drop ? `<div class="ldrop">${esc(drop)}</div>` : ""}`;
+}
+
+/** The plan on the Signal tab: none (> 10% below the level), dim (3-10%: greyed, "plan if it breaks out"), full. */
+function planZone(sym, L) {
+  if (L.open) return "full";
+  const st = levelStatus(sym);
+  return st === "far" ? "none" : st === "near" ? "dim" : "full";
+}
+
+function renderPlan(sym, L) {
+  const z = planZone(sym, L), s = S.bySym[sym];
+  $("noplan").hidden = z !== "none";
+  $("ladder").hidden = $("tps").hidden = $("entered-btn").hidden = z === "none";
+  $("ladder").classList.toggle("dim", z === "dim");
+  $("tps").classList.toggle("dim", z === "dim");
+  if (z === "none") {
+    const below = 100 * (1 - price(sym) / s.level);
+    $("noplan").innerHTML = `<span class="k">${esc(t("no_signal_k"))}</span>${esc(t("no_signal", { x: below.toFixed(1), lvl: fmt(s.level) }))}`;
+  } else {
+    renderLadder(sym, L);
+    renderTps(L);
+  }
+  $("sig-status").hidden = z === "none";
+  $("sig-status").textContent = signalSentence(sym, L);
+}
+
+/** The line under the chart: when the daily level steps down if no new highs come. */
+function projText(sym) {
+  const st = levelSteps(sym).slice(0, 2);
+  if (!st.length) return t("lvl_same");
+  return t("lvl_drop", { list: st.map((x) => t("lvl_step", { n: nDays(x.n), p: fmt(x.p) })).join(", ") });
+}
+
+/* 20-candle levels of the chart's timeframe: highest high / lowest low of the last 20 CLOSED candles (a guide). */
+const TF_SEC = { "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400 };
+const rowSec = (r) => (typeof r.time === "number" ? r.time : Date.parse(r.time + "T00:00:00Z") / 1000);
+
+function updateLv20() {
+  const L = S.lv;
+  if (!L || !S.series) return;
+  const now = Date.now() / 1000;
+  const rows = (S.klines[kkey(L.sym, L.tf)] || {}).rows || L.rows;    // the live cache when there is one
+  const closed = rows.filter((r) => rowSec(r) + TF_SEC[L.tf] <= now).slice(-20);
+  if (closed.length < 2) return;
+  const hi = Math.max(...closed.map((r) => r.high)), lo = Math.min(...closed.map((r) => r.low));
+  if (hi === L.hi && lo === L.lo) return;
+  L.hi = hi; L.lo = lo;
+  L.hiLine.applyOptions({ price: hi });
+  L.loLine.applyOptions({ price: lo });
+}
+
 /** Today's daily candle so far (UTC): the newest Binance kline if it is today's, else the export's; widened by the
     live price (the klines are cached for up to 5 minutes). null if unknown. */
 function todayBar(sym) {
@@ -1047,20 +1148,20 @@ async function renderSignal() {
   const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym];
   $("entered-btn").textContent = t("i_entered");
   renderHero(sym, L);
-  renderLadder(sym, L);
-  renderTps(L);
+  renderPlan(sym, L);
   renderSigNews(sym);
-  fitAll();
-  $("sig-status").textContent = signalSentence(sym, L);
   renderTfs(sym);
+  $("lvl-legend").innerHTML = `<span><i></i>${esc(t("lv20"))}</span><span><i class="bot"></i>${esc(t("bot_level"))}</span>` +
+    (S.tf === "1d" ? `<span><i class="proj"></i>${esc(t("proj_level"))}</span>` : "");
+  $("lvl-proj").textContent = projText(sym);
+  fitAll();
   const tf = S.tf;
   if (tf === "1d") await loadKlines(sym, "1d");
   else await Promise.all([loadKlines(sym, "1d"), loadKlines(sym, tf)]);   // the daily one feeds the 2 ATR filter
   const rows = await loadKlines(sym, tf);
   wsKline(sym, tf);
   if (S.coin === sym && S.tab === "signal" && !L.open && L.above) {       // today's candle now known
-    renderLadder(sym, L);
-    $("sig-status").textContent = signalSentence(sym, L);
+    renderPlan(sym, L);
     fitAll();
   }
   // only while the Signal tab is on screen: a chart built in a hidden tab has no width to size from
@@ -1074,7 +1175,21 @@ async function renderSignal() {
   series.setData(rows);
   S.series = series;
   const line = (p, color, title, style = 2) => series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
-  line(s.level, PAL().blue, t("level"), 1);
+  line(s.level, PAL().blue, t("bot_level"), 0);
+  const lv = (title) => series.createPriceLine({ price: s.level, color: PAL().gold, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title });
+  S.lv = { sym, tf, rows, hi: null, lo: null, hiLine: lv(""), loLine: lv("") };
+  updateLv20();
+  if (tf === "1d" && rows.length) {                                       // projected daily level, right of the last candle
+    const last = rows[rows.length - 1].time;
+    const tm = (d) => (typeof last === "number" ? Date.parse(d + "T00:00:00Z") / 1000 : d);
+    const pts = [{ time: last, value: s.level }];
+    for (const [d, p] of levelPath(sym)) if (rowSec({ time: tm(d) }) > rowSec({ time: last })) pts.push({ time: tm(d), value: p });
+    if (pts.length > 1) {
+      const proj = S.chart.addLineSeries({ color: PAL().blue, lineWidth: 2, lineStyle: 2, lineType: 1, priceLineVisible: false,
+        lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 } });
+      proj.setData(pts);
+    }
+  }
   if (L.open) {
     line(L.entry, PAL().text, t("entry"));
     line(L.stop, PAL().down, t("stop"));
@@ -1349,7 +1464,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitA
 /* ---------- navigation ---------- */
 
 function destroyCharts() {
-  if (S.chart) { S.chart.remove(); S.chart = null; S.series = null; }
+  if (S.chart) { S.chart.remove(); S.chart = null; S.series = null; S.lv = null; }
   if (S.curveChart) { S.curveChart.remove(); S.curveChart = null; }
 }
 
