@@ -7,7 +7,7 @@ const I18N = {
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ делистинг", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} д назад", ago_now: "только что",
-    bubbles_btn: "Пузыри", close: "Закрыть", heat_title: "Тепловая карта",
+    bubbles_btn: "Пузыри", close: "Закрыть", theme_dark: "Тёмная тема", theme_light: "Светлая тема", heat_title: "Тепловая карта",
     heat_hint: "Площадь — объём за 24ч, цвет — изменение за {p}. Нажмите на монету.", heat_loading: "загрузка изменений за {p}…",
     fng_title: "Индекс страха и жадности", fng_yday: "Вчера", fng_week: "Неделю назад", fng_30: "За 30 дней",
     fng_ef: "Крайний страх", fng_f: "Страх", fng_n: "Нейтрально", fng_g: "Жадность", fng_eg: "Крайняя жадность",
@@ -50,7 +50,7 @@ const I18N = {
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ delisting", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", ago_now: "just now",
-    bubbles_btn: "Bubbles", close: "Close", heat_title: "Heatmap",
+    bubbles_btn: "Bubbles", close: "Close", theme_dark: "Dark theme", theme_light: "Light theme", heat_title: "Heatmap",
     heat_hint: "Area is 24h volume, colour the {p} change. Tap a coin.", heat_loading: "loading {p} changes…",
     fng_title: "Fear & Greed Index", fng_yday: "Yesterday", fng_week: "Last week", fng_30: "Last 30 days",
     fng_ef: "Extreme Fear", fng_f: "Fear", fng_n: "Neutral", fng_g: "Greed", fng_eg: "Extreme Greed",
@@ -94,6 +94,7 @@ const S = {
   data: null, live: {}, liveOk: false,
   lang: (new URLSearchParams(location.search).get("lang") || storeGet("lang") ||
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
+  theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
   news: null, newsFilter: "all", tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
 };
@@ -137,11 +138,47 @@ function badge(sym, coin, size = "sm") {
 }
 
 const TOP_N = 10;
+
+/* ---------- theme: light (default) / dark. CSS has the tokens; this palette is for what JS draws (charts, canvas, SVG). */
+const PALETTES = {
+  dark: { up: "#22d38a", down: "#ff5a6a", blue: "#4c8dff", gold: "#f5b942", text: "#f2f5fb", muted: "#9aa6bd", card: "#18213a",
+    fg: "255,255,255", upRgb: "34,211,138", downRgb: "255,90,106", noneRgb: "154,166,189",
+    heatBase: [31, 42, 71], heatUp: [22, 170, 108], heatDown: [214, 64, 82], heatNone: "rgb(38,48,74)",
+    bubbleFill: [0.16, 0.5, 0.06, 0.22], bubbleText: "#f2f5fb", bubbleText2: "rgba(242,245,251,0.85)",
+    zoneFillOff: 0.32, meta: "#0a0f1e", bar: "black" },
+  light: { up: "#0a8754", down: "#d42a43", blue: "#2563eb", gold: "#c98a00", text: "#0f172a", muted: "#5b6578", card: "#f4f6fa",
+    fg: "15,23,42", upRgb: "10,135,84", downRgb: "212,42,67", noneRgb: "120,130,150",
+    heatBase: [232, 236, 243], heatUp: [10, 135, 84], heatDown: [212, 42, 67], heatNone: "rgb(232,236,243)",
+    bubbleFill: [0.1, 0.42, 0.04, 0.2], bubbleText: "#0f172a", bubbleText2: "rgba(15,23,42,0.8)",
+    zoneFillOff: 0.28, meta: "#ffffff", bar: "default" },
+};
+const PAL = () => PALETTES[S.theme] || PALETTES.light;
+
+function setTheme(th) {
+  S.theme = th === "dark" ? "dark" : "light";
+  storeSet("meller_theme", S.theme);
+  const d = document.documentElement;
+  d.setAttribute("data-theme", S.theme);
+  const meta = (name, v) => {
+    let m = document.querySelector(`meta[name="${name}"]`);
+    if (!m) { m = document.createElement("meta"); m.name = name; document.head.appendChild(m); }
+    m.content = v;
+  };
+  meta("theme-color", PAL().meta);
+  meta("apple-mobile-web-app-status-bar-style", PAL().bar);
+  meta("color-scheme", S.theme);
+  $("theme").setAttribute("aria-label", t(S.theme === "dark" ? "theme_light" : "theme_dark"));
+  S.fngKey = null;                                           // the dial and the 30-day chart are SVG with theme colours
+  destroyCharts();
+  render();
+  if (B.open) drawBubbles();
+}
+
 const CHART_THEME = () => ({
   autoSize: true,                                   // sized from its container: never wider than the screen
-  layout: { background: { type: "solid", color: "#18213a" }, textColor: "#9aa6bd", fontSize: 11 },
-  grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
-  rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" }, timeScale: { borderColor: "rgba(255,255,255,0.08)" },
+  layout: { background: { type: "solid", color: PAL().card }, textColor: PAL().muted, fontSize: 11 },
+  grid: { vertLines: { color: `rgba(${PAL().fg},0.05)` }, horzLines: { color: `rgba(${PAL().fg},0.06)` } },
+  rightPriceScale: { borderColor: `rgba(${PAL().fg},0.1)` }, timeScale: { borderColor: `rgba(${PAL().fg},0.1)` },
   localization: { locale: S.lang === "ru" ? "ru-RU" : "en-US" },
 });
 
@@ -369,10 +406,10 @@ function sparkline(sym) {
   const lo = Math.min(...pts, s.level), hi = Math.max(...pts, s.level);
   const w = 200, h = 34, k = (v) => h - 3 - ((v - lo) / (hi - lo || 1)) * (h - 6);
   const line = pts.map((v, i) => `${((i / (pts.length - 1)) * w).toFixed(1)},${k(v).toFixed(1)}`).join(" ");
-  const col = pts[pts.length - 1] >= pts[0] ? "#22d38a" : "#ff5a6a";
+  const col = pts[pts.length - 1] >= pts[0] ? PAL().up : PAL().down;
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
     <polyline points="0,${h} ${line} ${w},${h}" fill="${col}" fill-opacity="0.08" stroke="none"/>
-    <line x1="0" x2="${w}" y1="${k(s.level)}" y2="${k(s.level)}" stroke="#4c8dff" stroke-width="1.2" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+    <line x1="0" x2="${w}" y1="${k(s.level)}" y2="${k(s.level)}" stroke="${PAL().blue}" stroke-width="1.2" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
     <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
 }
 
@@ -435,9 +472,10 @@ const FNG_ZONES = [
 ];
 const fngZone = (v) => FNG_ZONES.find((z) => v < z.to) || FNG_ZONES[4];
 const fngLabel = (d) => t(fngZone(d.v).key);
-const fngColor = (v) => fngZone(v).color;
+const FNG_INK_LIGHT = { fng_ef: "#d42a43", fng_f: "#cc5414", fng_n: "#9a7200", fng_g: "#4a8a1c", fng_eg: "#0a8754" };
+const fngColor = (v) => (S.theme === "dark" ? fngZone(v).color : FNG_INK_LIGHT[fngZone(v).key]);   // text: readable on the card
 
-const FNG_STOPS = FNG_ZONES.map((z) => `<stop offset="${Math.min(1, (z.from + z.to) / 200).toFixed(3)}" stop-color="${z.color}"/>`).join("");
+const fngStops = () => FNG_ZONES.map((z) => `<stop offset="${Math.min(1, (z.from + z.to) / 200).toFixed(3)}" stop-color="${fngColor(z.from)}"/>`).join("");
 
 /** Half-circle dial: five coloured zones with their names, a needle at the value (rotated by animateNeedle). */
 function fngDial(v) {
@@ -454,17 +492,17 @@ function fngDial(v) {
     const y0 = ly - (words.length - 1) * 6.5 + (anchor === "middle" ? -2 : 3.5);
     const label = words.map((w, i) => `<tspan x="${f(lx)}" y="${f(y0 + i * 13)}">${esc(w)}</tspan>`).join("");
     return `<path d="M${f(a[0])} ${f(a[1])} A${R} ${R} 0 0 1 ${f(b[0])} ${f(b[1])} L${f(c[0])} ${f(c[1])} A${r} ${r} 0 0 0 ${f(d[0])} ${f(d[1])}Z"
-        fill="${z.color}" fill-opacity="${on ? 1 : 0.32}"/>
-      <text text-anchor="${anchor}" font-size="11.5" font-weight="${on ? 800 : 600}" fill="${on ? z.color : "#9aa6bd"}">${label}</text>`;
+        fill="${z.color}" fill-opacity="${on ? 1 : PAL().zoneFillOff}"/>
+      <text text-anchor="${anchor}" font-size="11.5" font-weight="${on ? 800 : 600}" fill="${on ? fngColor(z.from) : PAL().muted}">${label}</text>`;
   }).join("");
   const ticks = [0, 25, 45, 56, 76, 100].map((x) => { const [a, b] = [P(r - 3, x), P(r - 8, x)];
-    return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>`; }).join("");
+    return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="rgba(${PAL().fg},0.25)" stroke-width="1.2"/>`; }).join("");
   return `<svg viewBox="0 0 320 152" role="img" aria-hidden="true" font-family="Manrope, system-ui, sans-serif">
     ${zones}${ticks}
     <g id="fng-needle" transform="rotate(0 ${cx} ${cy})">
-      <path d="M${cx - 92} ${cy} L${cx} ${cy - 5.5} L${cx + 14} ${cy} L${cx} ${cy + 5.5}Z" fill="#f2f5fb"/>
+      <path d="M${cx - 92} ${cy} L${cx} ${cy - 5.5} L${cx + 14} ${cy} L${cx} ${cy + 5.5}Z" fill="${PAL().text}"/>
     </g>
-    <circle cx="${cx}" cy="${cy}" r="9" fill="#f2f5fb"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="${here.color}"/>
+    <circle cx="${cx}" cy="${cy}" r="9" fill="${PAL().text}"/><circle cx="${cx}" cy="${cy}" r="4.5" fill="${here.color}"/>
   </svg>`;
 }
 
@@ -491,7 +529,7 @@ function fngSpark(rows) {
   const xy = pts.map((d, i) => [n > 1 ? (300 * i) / (n - 1) : 150, 32 - (30 * d.v) / 100]);
   const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   return `<svg class="fng-spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="fngS" x1="0" y1="32" x2="0" y2="2" gradientUnits="userSpaceOnUse">${FNG_STOPS}</linearGradient></defs>
+    <defs><linearGradient id="fngS" x1="0" y1="32" x2="0" y2="2" gradientUnits="userSpaceOnUse">${fngStops()}</linearGradient></defs>
     <polyline points="${line}" fill="none" stroke="url(#fngS)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
   </svg>`;
 }
@@ -501,16 +539,16 @@ function fngChart(rows) {
   const L = 24, R = 312, T = 8, Bm = 128;
   const X = (i) => (n > 1 ? L + ((R - L) * i) / (n - 1) : (L + R) / 2), Y = (v) => Bm - ((Bm - T) * v) / 100;
   const day = (ts) => new Date(ts * 1000).toLocaleDateString(S.lang === "ru" ? "ru-RU" : "en-US", { day: "numeric", month: "short", timeZone: "UTC" });
-  const grid = [0, 25, 50, 75, 100].map((v) => `<line x1="${L}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(255,255,255,0.08)"/>
-    <text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="#9aa6bd">${v}</text>`).join("");
+  const grid = [0, 25, 50, 75, 100].map((v) => `<line x1="${L}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(${PAL().fg},0.08)"/>
+    <text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="${PAL().muted}">${v}</text>`).join("");
   const line = pts.map((d, i) => `${X(i).toFixed(1)},${Y(d.v).toFixed(1)}`).join(" ");
   const dots = pts.map((d, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(d.v).toFixed(1)}" r="${i === n - 1 ? 4.5 : 2.2}" fill="${fngColor(d.v)}"/>`).join("");
   const ticks = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i)
-    .map((i, k, a) => `<text x="${X(i).toFixed(1)}" y="146" font-size="10" fill="#9aa6bd" text-anchor="${k === 0 && a.length > 1 ? "start" : k === a.length - 1 && a.length > 1 ? "end" : "middle"}">${esc(day(pts[i].ts))}</text>`).join("");
+    .map((i, k, a) => `<text x="${X(i).toFixed(1)}" y="146" font-size="10" fill="${PAL().muted}" text-anchor="${k === 0 && a.length > 1 ? "start" : k === a.length - 1 && a.length > 1 ? "end" : "middle"}">${esc(day(pts[i].ts))}</text>`).join("");
   const last = pts[n - 1];
   return `<div class="fng-full"><p class="cap">${esc(t("fng_30"))}</p>
     <svg viewBox="0 0 320 150" role="img" aria-label="${esc(t("fng_30"))}" font-family="Manrope, system-ui, sans-serif">
-    <defs><linearGradient id="fngL" x1="0" y1="${Bm}" x2="0" y2="${T}" gradientUnits="userSpaceOnUse">${FNG_STOPS}</linearGradient></defs>
+    <defs><linearGradient id="fngL" x1="0" y1="${Bm}" x2="0" y2="${T}" gradientUnits="userSpaceOnUse">${fngStops()}</linearGradient></defs>
     ${grid}<polyline points="${line}" fill="none" stroke="url(#fngL)" stroke-width="2.2" stroke-linejoin="round"/>${dots}
     <text x="${Math.min(R, X(n - 1)).toFixed(1)}" y="${(Y(last.v) - 9).toFixed(1)}" text-anchor="end" font-size="12" font-weight="800" fill="${fngColor(last.v)}">${last.v}</text>
     ${ticks}</svg></div>`;
@@ -575,9 +613,10 @@ function squarify(items, x, y, w, h) {
 
 /** Tile colour: from the card colour towards green / red, stronger for bigger moves (full at the period's scale). */
 function heatColor(ch) {
-  if (ch == null) return "rgb(38,48,74)";
+  const P = PAL();
+  if (ch == null) return P.heatNone;
   const a = 0.18 + 0.82 * Math.min(1, Math.abs(ch) / PERIOD_SCALE[B.period]);
-  const base = [31, 42, 71], to = ch >= 0 ? [22, 170, 108] : [214, 64, 82];
+  const base = P.heatBase, to = ch >= 0 ? P.heatUp : P.heatDown;
   return "rgb(" + base.map((v, i) => Math.round(v + (to[i] - v) * a)).join(",") + ")";
 }
 
@@ -623,6 +662,9 @@ function heatTile(sym) {
   if (!el) return;
   const coin = S.bySym[sym].coin, ch = bubbleChange(sym);
   el.style.backgroundColor = heatColor(ch);
+  // text: white on strong tiles; on the light theme's pale tiles the dark text colour
+  const strong = ch != null && 0.18 + 0.82 * Math.min(1, Math.abs(ch) / PERIOD_SCALE[B.period]) >= 0.62;
+  el.style.color = S.theme === "dark" || strong ? "#ffffff" : PAL().text;
   const pct = pctText(ch);
   el.setAttribute("aria-label", `${coin} ${pct}`);
   // name size: limited by the tile width (≈0.66 em per letter) and height
@@ -805,10 +847,11 @@ function drawBubbles() {
   for (const n of B.nodes) {
     const ch = bubbleChange(n.sym);
     const a = ch == null ? 0 : Math.min(1, Math.abs(ch) / scale);
-    const rgb = ch == null ? "154,166,189" : ch >= 0 ? "34,211,138" : "255,90,106";
+    const P = PAL(), [f0, f1, f2, f3] = P.bubbleFill;
+    const rgb = ch == null ? P.noneRgb : ch >= 0 ? P.upRgb : P.downRgb;
     const g = ctx.createRadialGradient(n.x - n.r * 0.3, n.y - n.r * 0.35, n.r * 0.1, n.x, n.y, n.r);
-    g.addColorStop(0, `rgba(${rgb},${(0.16 + 0.5 * a).toFixed(3)})`);
-    g.addColorStop(1, `rgba(${rgb},${(0.06 + 0.22 * a).toFixed(3)})`);
+    g.addColorStop(0, `rgba(${rgb},${(f0 + f1 * a).toFixed(3)})`);
+    g.addColorStop(1, `rgba(${rgb},${(f2 + f3 * a).toFixed(3)})`);
     ctx.beginPath();
     ctx.arc(n.x, n.y, n.r, 0, 2 * Math.PI);
     ctx.fillStyle = g;
@@ -820,7 +863,7 @@ function drawBubbles() {
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.r + 3, 0, 2 * Math.PI);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "#f5b942";
+      ctx.strokeStyle = P.gold;
       ctx.stroke();
     }
     const showPct = ch != null && n.r >= 20;
@@ -828,12 +871,12 @@ function drawBubbles() {
     ctx.font = `800 ${fs}px Manrope, system-ui, sans-serif`;
     const w = ctx.measureText(n.coin).width;
     if (w > 1.6 * n.r) { fs = Math.max(7, fs * 1.6 * n.r / w); ctx.font = `800 ${fs}px Manrope, system-ui, sans-serif`; }
-    ctx.fillStyle = "#f2f5fb";
+    ctx.fillStyle = P.bubbleText;
     ctx.fillText(n.coin, n.x, showPct ? n.y - fs * 0.45 : n.y);
     if (showPct) {
       const ps = Math.max(8, fs * 0.8);
       ctx.font = `700 ${ps}px Manrope, system-ui, sans-serif`;
-      ctx.fillStyle = "rgba(242,245,251,0.85)";
+      ctx.fillStyle = P.bubbleText2;
       ctx.fillText((ch >= 0 ? "+" : "−") + Math.abs(ch).toFixed(Math.abs(ch) < 10 ? 1 : 0) + "%", n.x, n.y + fs * 0.65);
     }
   }
@@ -948,11 +991,11 @@ function renderHero(sym, L) {
 function renderLadder(sym, L) {
   const now = price(sym), H = 330, PAD = 22, GAP = 46;
   const items = [
-    { k: "tp2", name: "TP2", p: L.tp2, col: "#22d38a" },
-    { k: "tp1", name: "TP1", p: L.tp1, col: "#22d38a" },
-    { k: "entry", name: t("entry"), p: L.entry, col: "#f2f5fb" },
-    { k: "now", name: t("now"), p: now, col: "#4c8dff" },
-    { k: "stop", name: t("stop"), p: L.stop, col: "#ff5a6a" },
+    { k: "tp2", name: "TP2", p: L.tp2, col: PAL().up },
+    { k: "tp1", name: "TP1", p: L.tp1, col: PAL().up },
+    { k: "entry", name: t("entry"), p: L.entry, col: PAL().text },
+    { k: "now", name: t("now"), p: now, col: PAL().blue },
+    { k: "stop", name: t("stop"), p: L.stop, col: PAL().down },
   ].sort((a, b) => b.p - a.p);
   const hi = Math.max(...items.map((i) => i.p)), lo = Math.min(...items.map((i) => i.p));
   const y = (p) => PAD + ((hi - p) / (hi - lo || 1)) * (H - 2 * PAD);
@@ -1025,18 +1068,18 @@ async function renderSignal() {
   destroyCharts();
   S.chart = LightweightCharts.createChart($("chart"), { ...CHART_THEME(), crosshair: { mode: 0 } });
   const series = S.chart.addCandlestickSeries({
-    upColor: "#22d38a", downColor: "#ff5a6a", borderVisible: false, wickUpColor: "#22d38a", wickDownColor: "#ff5a6a",
+    upColor: PAL().up, downColor: PAL().down, borderVisible: false, wickUpColor: PAL().up, wickDownColor: PAL().down,
     priceFormat: { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 },
   });
   series.setData(rows);
   S.series = series;
   const line = (p, color, title, style = 2) => series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
-  line(s.level, "#4c8dff", t("level"), 1);
+  line(s.level, PAL().blue, t("level"), 1);
   if (L.open) {
-    line(L.entry, "#f2f5fb", t("entry"));
-    line(L.stop, "#ff5a6a", t("stop"));
-    line(L.tp1, "#22d38a", "TP1");
-    line(L.tp2, "#22d38a", "TP2");
+    line(L.entry, PAL().text, t("entry"));
+    line(L.stop, PAL().down, t("stop"));
+    line(L.tp1, PAL().up, "TP1");
+    line(L.tp2, PAL().up, "TP2");
   }
   S.chart.timeScale().fitContent();
 }
@@ -1406,6 +1449,8 @@ $("entry-form").addEventListener("submit", saveSheet);
 $("journal").addEventListener("click", jAction);
 $("import-file").addEventListener("change", jImport);
 $("search").addEventListener("input", (e) => { S.query = e.target.value; renderMarket(); fitAll(); });
+$("theme").addEventListener("click", () => { setTheme(S.theme === "dark" ? "light" : "dark"); track("theme-" + S.theme); });
+$("theme").setAttribute("aria-label", t(S.theme === "dark" ? "theme_light" : "theme_dark"));
 $("lang").addEventListener("click", () => {
   S.lang = S.lang === "ru" ? "en" : "ru";
   storeSet("lang", S.lang);
