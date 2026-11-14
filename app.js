@@ -7,6 +7,9 @@ const I18N = {
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ делистинг", ago_m: "{n} мин назад", ago_h: "{n} ч назад", ago_d: "{n} д назад", ago_now: "только что",
+    view_list: "Список", view_bubbles: "Пузыри",
+    bubble_hint: "Размер — объём за 24ч, цвет — изменение за {p}. <i class=\"ring\"></i> до пробоя ≤ {n}%. Нажмите на монету.",
+    bubble_loading: "загрузка изменений за {p}…", bubble_aria: "Пузыри монет: размер — объём, цвет — изменение цены",
     search: "Поиск монеты", near_title: "Ближе к пробою",
     near_explain: "Монеты отсортированы по расстоянию до 20-дневного максимума. Сигнал LONG появляется, когда " +
       "дневная свеча (закрытие в 00:00 UTC) закрывается выше этого уровня. Полная полоса — цена у уровня, " +
@@ -44,6 +47,9 @@ const I18N = {
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
     delisting: "⚠ delisting", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago", ago_now: "just now",
+    view_list: "List", view_bubbles: "Bubbles",
+    bubble_hint: "Size is 24h volume, colour the {p} change. <i class=\"ring\"></i> within {n}% of a breakout. Tap a coin.",
+    bubble_loading: "loading {p} changes…", bubble_aria: "Coin bubbles: size is volume, colour is price change",
     search: "Search coin", near_title: "Closest to a breakout",
     near_explain: "Coins are sorted by their distance to the 20-day high. A LONG signal comes when a daily " +
       "candle (close at 00:00 UTC) closes above that level. A full bar means the price is at the level, an " +
@@ -150,7 +156,7 @@ async function loadLive() {
       const r = await fetch(host + "/api/v3/ticker/24hr" + q);
       if (!r.ok) continue;
       const rows = await r.json();
-      S.live = Object.fromEntries(rows.map((x) => [x.symbol, { price: +x.lastPrice, change: +x.priceChangePercent }]));
+      S.live = Object.fromEntries(rows.map((x) => [x.symbol, { price: +x.lastPrice, change: +x.priceChangePercent, qv: +x.quoteVolume }]));
       S.liveOk = true;
       S.host = host;
       return;
@@ -242,7 +248,7 @@ function onTick(d) {
   const sym = d.s, p = +d.c, o = +d.o, old = S.live[sym];
   if (!old || !(p > 0)) return;
   if (p !== old.price) S.flash[sym] = p > old.price ? "up" : "down";
-  S.live[sym] = { price: p, change: o > 0 ? 100 * (p / o - 1) : old.change };
+  S.live[sym] = { price: p, change: o > 0 ? 100 * (p / o - 1) : old.change, qv: +d.q > 0 ? +d.q : old.qv };
   S.dirty.add(sym);
 }
 
@@ -299,6 +305,7 @@ function applyLive() {
     }
   }
   if (fit) fitAll();
+  if (B.still && bubblesOn()) drawBubbles();                  // reduced motion: no animation loop, redraw on new prices
 }
 
 async function loadNews() {
@@ -365,6 +372,7 @@ function sparkline(sym) {
 const barClass = (d) => (d <= S.data.rules.near_pct ? "near" : d <= 10 ? "mid" : "");
 
 function renderMarket() {
+  syncView();
   $("search").placeholder = t("search");
   $("near-title").textContent = t("near_title");
   $("near-explain").textContent = t("near_explain");
@@ -391,6 +399,236 @@ function renderMarket() {
     </li>`;
   }).join("");
 }
+
+
+/* ---------- bubbles: one circle per coin, size = 24h quote volume, colour = change over the chosen period ---------- */
+
+const B = {
+  view: storeGet("meller_market_view") === "bubbles" ? "bubbles" : "list",
+  period: ["1h", "24h", "7d"].includes(storeGet("meller_bubble_period")) ? storeGet("meller_bubble_period") : "24h",
+  nodes: [], bySym: {}, raf: 0, w: 0, h: 0, dpr: 1, last: 0, lastRadii: 0,
+  base: { "1h": {}, "7d": {} }, at: { "1h": 0, "7d": 0 }, loading: { "1h": false, "7d": false },
+  still: false,
+};
+const PERIOD_SCALE = { "1h": 3, "24h": 10, "7d": 25 };        // |change| at which the colour is at full strength
+const reducedMotion = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+const bubblesOn = () => !!S.data && S.tab === "market" && B.view === "bubbles" && !document.hidden;
+
+function syncView() {
+  const bub = B.view === "bubbles";
+  $("list-view").hidden = bub;
+  $("bubble-view").hidden = !bub;
+  document.querySelectorAll("#view-switch button").forEach((b) => b.classList.toggle("on", b.dataset.view === B.view));
+  document.querySelectorAll("#period-switch button").forEach((b) => b.classList.toggle("on", b.dataset.p === B.period));
+  const pl = { "1h": "1H", "24h": "24H", "7d": "7D" }[B.period];
+  const waiting = B.period !== "24h" && !Object.keys(B.base[B.period]).length;
+  $("bubble-hint").innerHTML = waiting ? esc(t("bubble_loading", { p: pl }))
+    : t("bubble_hint", { p: pl, n: S.data ? S.data.rules.near_pct : 3 });
+  $("bubbles").setAttribute("aria-label", t("bubble_aria"));
+  if (bub && bubblesOn()) startBubbles(); else stopBubbles();
+}
+
+/** Price change of a coin over the chosen period (null: no data). 1H and 7D compare the live price with a kline close. */
+function bubbleChange(sym) {
+  if (B.period === "24h") return change(sym);
+  const base = B.base[B.period][sym];
+  return base > 0 ? 100 * (price(sym) / base - 1) : null;
+}
+
+/** 1H / 7D: the close 60 one-minute candles / 168 hourly candles ago for every coin, at most once a minute. */
+async function loadPeriod(p) {
+  if (p === "24h" || B.loading[p] || Date.now() - B.at[p] < 60 * 1000) return;
+  B.loading[p] = true;
+  B.at[p] = Date.now();
+  const host = S.host || "https://data-api.binance.vision";
+  const [iv, lim] = p === "1h" ? ["1m", 61] : ["1h", 169];
+  const out = {};
+  if (p === "7d") {                                            // coins without Binance spot: daily closes from data.json
+    for (const s of S.data.symbols) {
+      const c = s.closes || [];
+      if (c.length >= 7) out[s.symbol] = c[c.length - 7];
+    }
+  }
+  const queue = S.liveOk ? S.data.symbols.map((s) => s.symbol).filter(hasSpot) : [];
+  const worker = async () => {
+    while (queue.length) {
+      const sym = queue.shift();
+      try {
+        const r = await fetch(`${host}/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${lim}`);
+        if (!r.ok) continue;
+        const k = await r.json();
+        if (k.length >= lim - 1) out[sym] = +k[0][4];
+      } catch (e) { /* this coin stays grey until the next refresh */ }
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  B.base[p] = Object.assign(B.base[p], out);
+  B.loading[p] = false;
+  if (S.tab === "market" && B.view === "bubbles") { syncView(); if (B.still) drawBubbles(); }
+}
+
+/** Box size: the screen width, from the top of the box down to the tab bar. */
+function sizeBubbles() {
+  const box = $("bubble-box"), cv = $("bubbles");
+  const z = (window.__mb && window.__mb.zoom) || 1;
+  const top = box.getBoundingClientRect().top + window.scrollY;
+  const bar = $("tabbar").getBoundingClientRect().height;
+  const w = Math.round(box.clientWidth);
+  const h = Math.max(300, Math.round(window.innerHeight / z - top - bar - 10));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (w === B.w && h === B.h && dpr === B.dpr) return false;
+  const sx = B.w ? w / B.w : 1, sy = B.h ? h / B.h : 1;
+  for (const n of B.nodes) { n.x *= sx; n.y *= sy; }
+  B.w = w; B.h = h; B.dpr = dpr;
+  box.style.height = h + "px";
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  return true;
+}
+
+/** Radius ∝ √(24h quote volume), scaled so the bubbles cover about half the box, within a min and max size. */
+function targetRadii() {
+  const syms = S.data.symbols.map((s) => s.symbol);
+  const vols = syms.map((s) => (S.live[s] && S.live[s].qv > 0 ? S.live[s].qv : 0));
+  const known = vols.filter((v) => v > 0).sort((a, b) => a - b);
+  const med = known.length ? known[known.length >> 1] : 1;
+  const root = vols.map((v) => Math.sqrt(v > 0 ? v : med));
+  const side = Math.min(B.w, B.h);
+  // the minimum shrinks on short screens so the smallest bubbles cover at most ~28% of the box and sizes still differ
+  const rmin = Math.max(11, Math.min(Math.max(15, 0.045 * side), Math.sqrt(0.28 * B.w * B.h / (Math.PI * syms.length))));
+  const rmax = Math.max(rmin, 0.2 * side);
+  const area = (k) => root.reduce((a, q) => a + Math.PI * Math.min(rmax, Math.max(rmin, k * q)) ** 2, 0);
+  const goal = 0.5 * B.w * B.h;
+  let lo = 0, hi = 1;
+  while (area(hi) < goal && hi < 1e9) hi *= 2;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (area(m) < goal) lo = m; else hi = m; }
+  syms.forEach((s, i) => {
+    let n = B.bySym[s];
+    if (!n) {
+      n = B.bySym[s] = { sym: s, coin: S.bySym[s].coin, x: B.w * (0.1 + 0.8 * Math.random()), y: B.h * (0.1 + 0.8 * Math.random()),
+        vx: 0, vy: 0, r: rmin };
+      B.nodes.push(n);
+    }
+    n.tr = Math.min(rmax, Math.max(rmin, lo * root[i]));
+  });
+  B.lastRadii = Date.now();
+}
+
+/** One physics step (dt in 60 Hz frames): drift, push overlapping bubbles apart, stay inside the box. */
+function stepBubbles(dt, drift) {
+  const ns = B.nodes, cx = B.w / 2, cy = B.h / 2;
+  for (const n of ns) {
+    n.r += (n.tr - n.r) * Math.min(1, 0.08 * dt);
+    if (drift) { n.vx += (Math.random() - 0.5) * 0.03 * dt; n.vy += (Math.random() - 0.5) * 0.03 * dt; }
+    n.vx += (cx - n.x) * 0.00002 * dt; n.vy += (cy - n.y) * 0.00002 * dt;
+  }
+  for (let i = 0; i < ns.length; i++) {
+    const a = ns[i];
+    for (let j = i + 1; j < ns.length; j++) {
+      const b = ns[j];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const min = a.r + b.r + 2;
+      if (Math.abs(dx) >= min || Math.abs(dy) >= min) continue;
+      let d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      if (d < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.hypot(dx, dy); }
+      const push = (min - d) / d * 0.5, wa = b.r / (a.r + b.r), wb = a.r / (a.r + b.r);   // the smaller one moves more
+      a.x -= dx * push * wa; a.y -= dy * push * wa;
+      b.x += dx * push * wb; b.y += dy * push * wb;
+      a.vx -= dx / d * 0.02 * wa; a.vy -= dy / d * 0.02 * wa;
+      b.vx += dx / d * 0.02 * wb; b.vy += dy / d * 0.02 * wb;
+    }
+  }
+  const damp = Math.pow(0.94, dt);
+  for (const n of ns) {
+    n.vx *= damp; n.vy *= damp;
+    const v = Math.hypot(n.vx, n.vy);
+    if (v > 0.5) { n.vx *= 0.5 / v; n.vy *= 0.5 / v; }
+    n.x += n.vx * dt; n.y += n.vy * dt;
+    const r = Math.min(n.r, B.w / 2, B.h / 2);
+    if (n.x < r) { n.x = r; n.vx = Math.abs(n.vx); } else if (n.x > B.w - r) { n.x = B.w - r; n.vx = -Math.abs(n.vx); }
+    if (n.y < r) { n.y = r; n.vy = Math.abs(n.vy); } else if (n.y > B.h - r) { n.y = B.h - r; n.vy = -Math.abs(n.vy); }
+  }
+}
+
+function drawBubbles() {
+  const cv = $("bubbles"), ctx = cv.getContext("2d");
+  ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
+  ctx.clearRect(0, 0, B.w, B.h);
+  const scale = PERIOD_SCALE[B.period], near = S.data.rules.near_pct;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const n of B.nodes) {
+    const ch = bubbleChange(n.sym);
+    const a = ch == null ? 0 : Math.min(1, Math.abs(ch) / scale);
+    const rgb = ch == null ? "154,166,189" : ch >= 0 ? "34,211,138" : "255,90,106";
+    const g = ctx.createRadialGradient(n.x - n.r * 0.3, n.y - n.r * 0.35, n.r * 0.1, n.x, n.y, n.r);
+    g.addColorStop(0, `rgba(${rgb},${(0.16 + 0.5 * a).toFixed(3)})`);
+    g.addColorStop(1, `rgba(${rgb},${(0.06 + 0.22 * a).toFixed(3)})`);
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, 2 * Math.PI);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(${rgb},${(0.3 + 0.6 * a).toFixed(3)})`;
+    ctx.stroke();
+    if (dist(n.sym) <= near) {                                 // close to its breakout level
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r + 3, 0, 2 * Math.PI);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#f5b942";
+      ctx.stroke();
+    }
+    const showPct = ch != null && n.r >= 20;
+    let fs = Math.max(9, Math.min(20, n.r * (showPct ? 0.4 : 0.5)));
+    ctx.font = `800 ${fs}px Manrope, system-ui, sans-serif`;
+    const w = ctx.measureText(n.coin).width;
+    if (w > 1.6 * n.r) { fs = Math.max(7, fs * 1.6 * n.r / w); ctx.font = `800 ${fs}px Manrope, system-ui, sans-serif`; }
+    ctx.fillStyle = "#f2f5fb";
+    ctx.fillText(n.coin, n.x, showPct ? n.y - fs * 0.45 : n.y);
+    if (showPct) {
+      const ps = Math.max(8, fs * 0.8);
+      ctx.font = `700 ${ps}px Manrope, system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(242,245,251,0.85)";
+      ctx.fillText((ch >= 0 ? "+" : "−") + Math.abs(ch).toFixed(Math.abs(ch) < 10 ? 1 : 0) + "%", n.x, n.y + fs * 0.65);
+    }
+  }
+}
+
+function bubbleFrame(ts) {
+  B.raf = 0;
+  if (!bubblesOn()) return;
+  const dt = B.last ? Math.min(3, (ts - B.last) / (1000 / 60)) : 1;
+  B.last = ts;
+  if (Date.now() - B.lastRadii > 5000) targetRadii();         // volumes move: re-size every few seconds
+  stepBubbles(dt, true);
+  drawBubbles();
+  B.raf = requestAnimationFrame(bubbleFrame);
+}
+
+/** Start (or refresh) the bubbles: size the canvas, set the radii, load the period's data, run or draw once. */
+function startBubbles(resized) {
+  const changed = sizeBubbles();
+  const fresh = !B.nodes.length;
+  targetRadii();
+  if (fresh || changed || resized) for (let i = 0; i < 120; i++) stepBubbles(1, false);   // settle before the first frame
+  loadPeriod(B.period);
+  B.still = reducedMotion();
+  if (B.still) {
+    if (B.raf) { cancelAnimationFrame(B.raf); B.raf = 0; }
+    for (let i = 0; i < 60; i++) stepBubbles(1, false);
+    for (const n of B.nodes) { n.r = n.tr; n.vx = n.vy = 0; }
+    drawBubbles();
+    return;
+  }
+  drawBubbles();
+  if (!B.raf) { B.last = 0; B.raf = requestAnimationFrame(bubbleFrame); }
+}
+
+function stopBubbles() {
+  if (B.raf) cancelAnimationFrame(B.raf);
+  B.raf = 0;
+}
+setInterval(() => { if (bubblesOn()) loadPeriod(B.period); }, 60 * 1000);
 
 /* ---------- Сигнал ---------- */
 
@@ -858,9 +1096,9 @@ function fitAll() {
     }
   }
 }
-window.addEventListener("resize", () => fitAll());
+window.addEventListener("resize", () => { fitAll(); if (bubblesOn()) startBubbles(true); });
 // desktop-mode zoom changed (index.html): rebuild the charts at the new size and re-fit the lines
-window.addEventListener("mb-zoom", () => { destroyCharts(); render(); });
+window.addEventListener("mb-zoom", () => { destroyCharts(); render(); if (bubblesOn()) startBubbles(true); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitAll());   // Manrope changes the widths
 
 /* ---------- navigation ---------- */
@@ -873,6 +1111,7 @@ function destroyCharts() {
 function show(tab) {
   if (tab !== S.tab) destroyCharts();
   if (tab !== "signal") wsKline(null);
+  if (tab !== "market") stopBubbles();
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -923,7 +1162,7 @@ async function init() {
     if (S.tab !== "signal") render(); else renderHeader();
   }, 60 * 1000);
   document.addEventListener("visibilitychange", async () => {
-    if (document.hidden) { wsClose(); return; }
+    if (document.hidden) { wsClose(); stopBubbles(); return; }
     await loadLive();
     render();
     wsConnect();
@@ -967,6 +1206,38 @@ $("news-filter").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-f]");
   if (b) { S.newsFilter = b.dataset.f; renderNews(); fitAll(); }
 });
+$("view-switch").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-view]");
+  if (!b || b.dataset.view === B.view) return;
+  B.view = b.dataset.view;
+  storeSet("meller_market_view", B.view);
+  renderMarket(); fitAll();
+  window.scrollTo(0, 0);
+});
+$("period-switch").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-p]");
+  if (!b || b.dataset.p === B.period) return;
+  B.period = b.dataset.p;
+  storeSet("meller_bubble_period", B.period);
+  syncView();
+});
+(function () {                                               // tap a bubble: open that coin on the Signal tab
+  const cv = $("bubbles");
+  let down = null;
+  cv.addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; });
+  cv.addEventListener("pointerup", (e) => {
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 12) { down = null; return; }
+    down = null;
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (B.w / r.width), y = (e.clientY - r.top) * (B.h / r.height);
+    let hit = null, best = Infinity;
+    for (const n of B.nodes) {
+      const d = Math.hypot(x - n.x, y - n.y) / Math.max(n.r, 18);   // small bubbles get a finger-sized target
+      if (d <= 1 && d < best) { best = d; hit = n; }
+    }
+    if (hit) openCoin(hit.sym);
+  });
+})();
 $("more").addEventListener("click", () => { S.showAll = !S.showAll; renderMarket(); fitAll(); });
 $("near-info").addEventListener("click", (e) => {
   const open = $("near-explain").hidden;
