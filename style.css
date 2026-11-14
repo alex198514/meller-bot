@@ -241,6 +241,16 @@ html.le360 .lrow { left: 34px; padding: 0 8px; gap: 6px; }
 .ptags span { font-size: 14px; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
 .empty { text-align: center; color: var(--muted); padding: 40px 14px; }
 
+/* ---------- live prices ---------- */
+@keyframes flashUp { 0% { background: rgba(34, 211, 138, 0.35); } 100% { background: transparent; } }
+@keyframes flashDown { 0% { background: rgba(255, 90, 106, 0.35); } 100% { background: transparent; } }
+.flash-up { animation: flashUp 0.7s ease-out; border-radius: 6px; }
+.flash-down { animation: flashDown 0.7s ease-out; border-radius: 6px; }
+.tfs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 12px 0 10px; padding: 4px;
+  border-radius: 14px; background: var(--card); border: 1px solid var(--line-2); }
+.tfs button { border: 0; background: none; color: var(--muted); padding: 9px 0; border-radius: 10px; font-weight: 800; font-size: 15px; cursor: pointer; }
+.tfs button.on { background: var(--card-2); color: var(--text); box-shadow: 0 1px 0 var(--line-2) inset; }
+
 /* ---------- my trade journal ---------- */
 .primary { width: 100%; margin: 12px 0 4px; padding: 15px; border: 0; border-radius: 14px; cursor: pointer;
   background: var(--green); color: #05251a; font-size: 17px; font-weight: 800; box-shadow: var(--shadow); }

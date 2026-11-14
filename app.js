@@ -12,7 +12,7 @@ const I18N = {
       "дневная свеча (закрытие в 00:00 UTC) закрывается выше этого уровня. Полная полоса — цена у уровня, " +
       "пустая — 20% и дальше.",
     show_all: "Показать все {n}", show_top: "Показать только топ-10",
-    live: "живые цены", data_at: "данные {t}", to_breakout: "до пробоя", above: "выше уровня",
+    live: "онлайн", polling: "обновление раз в минуту", data_at: "данные {t}", to_breakout: "до пробоя", above: "выше уровня",
     bull: "бычий", bear: "медвежий", side: "боковик", nodata: "нет данных",
     chip_wait: "ЖДЁМ ПРОБОЯ", chip_long: "LONG ОТКРЫТ",
     entry: "Вход", stop: "Стоп", now: "Сейчас", take: "Тейк", trailing: "трейлинг",
@@ -49,7 +49,7 @@ const I18N = {
       "candle (close at 00:00 UTC) closes above that level. A full bar means the price is at the level, an " +
       "empty one 20% or more away.",
     show_all: "Show all {n}", show_top: "Show top 10 only",
-    live: "live prices", data_at: "data {t}", to_breakout: "to breakout", above: "above level",
+    live: "live", polling: "updating every minute", data_at: "data {t}", to_breakout: "to breakout", above: "above level",
     bull: "bull", bear: "bear", side: "sideways", nodata: "no data",
     chip_wait: "WAITING", chip_long: "LONG OPEN",
     entry: "Entry", stop: "Stop", now: "Now", take: "Take", trailing: "trailing",
@@ -83,7 +83,7 @@ const S = {
   lang: (new URLSearchParams(location.search).get("lang") || storeGet("lang") ||
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
   tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
-  news: null, newsFilter: "all",
+  news: null, newsFilter: "all", tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
 };
 
 function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -108,6 +108,8 @@ const fmt = (p) => (p == null || !isFinite(p) ? "—" : (p < 0 ? "−$" : "$") +
 const sgn = (x, d = 2) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);
 const cls = (x) => (x >= 0 ? "up" : "down");
 const N = (text, extra = "") => `<span class="num ${extra}">${text}</span>`;   // every number goes through here
+/** A live number: updated in place by the WebSocket (data-px = price, data-chg = 24h change of `sym`). */
+const NL = (kind, sym, text, extra = "") => `<span class="num ${extra}" data-${kind}="${esc(sym)}">${text}</span>`;
 
 /** Coin icons shipped in icons/ (cryptocurrency-icons 0.18.1, CC0): lowercase ticker = symbol without "USDT". */
 const ICONS = new Set("btc eth sol bnb xrp ada doge link ltc avax dot trx atom xlm aave uni zec bch ankr ape chz comp dash enj fil gmt grt icp iost lpt lsk mana neo ong sand stx uma vet zrx 1inch".split(" "));
@@ -157,20 +159,146 @@ async function loadLive() {
   S.liveOk = false;
 }
 
-async function loadKlines(sym) {
-  const c = S.klines[sym];
+const TFS = [["15m", "15m"], ["1h", "1H"], ["4h", "4H"], ["1d", "1D"]];
+const kkey = (sym, tf) => (tf === "1d" ? sym : `${sym}|${tf}`);      // daily candles keep their key: the 2 ATR filter reads them
+const hasSpot = (sym) => !!S.live[sym];                               // Binance spot data (REST and WebSocket) for this coin
+
+async function loadKlines(sym, tf = "1d") {
+  const c = S.klines[kkey(sym, tf)];
   if (c && Date.now() - c.at < 5 * 60 * 1000) return c.rows;
-  if (S.liveOk) {
+  if (S.liveOk && hasSpot(sym)) {
     try {
-      const r = await fetch(`${S.host}/api/v3/klines?symbol=${sym}&interval=1d&limit=120`);
+      const r = await fetch(`${S.host}/api/v3/klines?symbol=${sym}&interval=${tf}&limit=${tf === "1d" ? 120 : 300}`);
       if (r.ok) {
         const rows = (await r.json()).map((k) => ({ time: k[0] / 1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] }));
-        S.klines[sym] = { at: Date.now(), rows };
+        S.klines[kkey(sym, tf)] = { at: Date.now(), rows };
         return rows;
       }
     } catch (e) { /* fall back below */ }
   }
+  if (tf !== "1d") return [];
   return S.bySym[sym].ohlc.map(([d, o, h, l, cl]) => ({ time: d, open: o, high: h, low: l, close: cl }));
+}
+
+/* ---------- live prices: one Binance WebSocket (miniTicker for every coin with spot data, kline of the open chart) ---------- */
+
+const WS_URL = "wss://stream.binance.com:9443/stream";
+const WS = { sock: null, ok: false, tries: 0, timer: null, kline: null, id: 1, msgs: 0, klines: 0 };
+
+function wsConnect() {
+  if (document.hidden || WS.sock || new URLSearchParams(location.search).has("nows")) return;
+  const syms = Object.keys(S.live);
+  if (!syms.length) return;
+  let sock;
+  try { sock = new WebSocket(`${WS_URL}?streams=` + syms.map((s) => s.toLowerCase() + "@miniTicker").join("/")); }
+  catch (e) { wsRetry(); return; }
+  WS.sock = sock;
+  sock.onopen = () => {
+    WS.ok = true; WS.tries = 0;
+    if (WS.kline) wsSend("SUBSCRIBE", [WS.kline]);
+    renderHeader();
+  };
+  sock.onmessage = (ev) => {
+    let m;
+    try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const d = m && m.data;
+    if (!d) return;
+    WS.msgs++;
+    if (d.e === "24hrMiniTicker") onTick(d);
+    else if (d.e === "kline") onKline(d);
+  };
+  sock.onclose = () => {
+    WS.sock = null;
+    const was = WS.ok;
+    WS.ok = false;
+    if (was) renderHeader();
+    wsRetry();
+  };
+  sock.onerror = () => { try { sock.close(); } catch (e) { /* closing anyway */ } };
+}
+function wsRetry() {                                          // 1, 2, 4 ... 30 s; polling covers the gap
+  if (document.hidden) return;
+  clearTimeout(WS.timer);
+  WS.timer = setTimeout(wsConnect, Math.min(30000, 1000 * 2 ** WS.tries++));
+}
+function wsClose() {
+  clearTimeout(WS.timer);
+  if (WS.sock) { WS.sock.onclose = null; try { WS.sock.close(); } catch (e) { /* gone */ } WS.sock = null; }
+  WS.ok = false;
+}
+function wsSend(method, params) {
+  if (WS.sock && WS.sock.readyState === 1) WS.sock.send(JSON.stringify({ method, params, id: WS.id++ }));
+}
+/** Follow the kline stream of the open chart (none for coins without Binance spot data). */
+function wsKline(sym, tf) {
+  const s = sym && hasSpot(sym) ? `${sym.toLowerCase()}@kline_${tf}` : null;
+  if (s === WS.kline) return;
+  if (WS.kline) wsSend("UNSUBSCRIBE", [WS.kline]);
+  WS.kline = s;
+  if (s) wsSend("SUBSCRIBE", [s]);
+}
+
+function onTick(d) {
+  const sym = d.s, p = +d.c, o = +d.o, old = S.live[sym];
+  if (!old || !(p > 0)) return;
+  if (p !== old.price) S.flash[sym] = p > old.price ? "up" : "down";
+  S.live[sym] = { price: p, change: o > 0 ? 100 * (p / o - 1) : old.change };
+  S.dirty.add(sym);
+}
+
+function onKline(d) {
+  const k = d.k;
+  if (!k) return;
+  WS.klines++;
+  const bar = { time: k.t / 1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c };
+  const c = S.klines[kkey(d.s, k.i)];
+  if (c && c.rows.length) {                                   // keep the cache current (the 2 ATR filter reads the daily one)
+    const last = c.rows[c.rows.length - 1];
+    if (last.time === bar.time) c.rows[c.rows.length - 1] = bar; else if (bar.time > last.time) c.rows.push(bar);
+  }
+  if (S.series && d.s === S.coin && k.i === S.tf) { try { S.series.update(bar); } catch (e) { /* older bar */ } }
+}
+
+/** Apply the queued price changes: numbers in place every second, heavier parts at most every 2 s. */
+function applyLive() {
+  if (!S.data || !S.dirty.size) return;
+  const dirty = new Set(S.dirty);
+  S.dirty.clear();
+  let fit = false;
+  for (const sym of dirty) {
+    const px = price(sym), ch = change(sym), f = S.flash[sym];
+    delete S.flash[sym];
+    document.querySelectorAll(`[data-px="${sym}"]`).forEach((el) => {
+      el.textContent = fmt(px);
+      if (f) { el.classList.remove("flash-up", "flash-down"); void el.offsetWidth; el.classList.add("flash-" + f); }
+      fit = true;
+    });
+    if (ch != null) document.querySelectorAll(`[data-chg="${sym}"]`).forEach((el) => {
+      el.textContent = sgn(ch) + "%";
+      el.classList.toggle("up", ch >= 0);
+      el.classList.toggle("down", ch < 0);
+    });
+    document.querySelectorAll(`[data-dist="${sym}"]`).forEach((el) => {
+      const dd = dist(sym), bc = barClass(dd);
+      el.innerHTML = `<div class="lbl ${bc}">${dd <= 0 ? `<b>${esc(t("above"))}</b>` : `${esc(t("to_breakout"))} <b>${N(dd.toFixed(1) + "%")}</b>`}</div>
+        <div class="bar ${bc}"><i style="width:${(100 * fill(dd)).toFixed(1)}%"></i></div>`;
+    });
+  }
+  const now = Date.now();
+  if (now - S.lastSlow >= 2000) {
+    const mine = new Set(jLoad().map((x) => x.sym));
+    if (S.tab === "signal" && dirty.has(S.coin)) {
+      const L = levelsFor(S.coin);
+      renderLadder(S.coin, L);
+      $("sig-status").textContent = signalSentence(S.coin, L);
+      S.lastSlow = now; fit = true;
+    }
+    if (S.tab === "positions" && [...dirty].some((s) => mine.has(s) || posOf(s))) {
+      renderPositions();
+      S.lastSlow = now; fit = true;
+    }
+  }
+  if (fit) fitAll();
 }
 
 async function loadNews() {
@@ -211,7 +339,8 @@ function renderHeader() {
   pill.title = m ? `BTC ${fmt(m.btc)} vs 200-day ${fmt(m.sma200)}` : "";
   const u = new Date(S.data.updated), p2 = (n) => String(n).padStart(2, "0");
   const when = `${p2(u.getDate())}.${p2(u.getMonth() + 1)} ${p2(u.getHours())}:${p2(u.getMinutes())}`;
-  $("status").innerHTML = S.liveOk ? `<span class="dot"></span>${esc(t("live"))}` : esc(t("data_at", { t: when }));
+  $("status").innerHTML = WS.ok ? `<span class="dot"></span>${esc(t("live"))}`
+    : S.liveOk ? esc(t("polling")) : esc(t("data_at", { t: when }));
   $("lang").textContent = S.lang === "ru" ? "EN" : "RU";
   document.documentElement.lang = S.lang;
   document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = t(el.dataset.t); });
@@ -254,10 +383,10 @@ function renderMarket() {
     return `<li class="row" data-sym="${esc(s.symbol)}">
       <div class="l1">${badge(s.symbol, s.coin)}<span class="cname">${esc(s.coin)}</span>
         ${pos ? `<span class="vbadge">${esc(pos.variant)}</span>` : ""}
-        ${ch == null ? "" : N(sgn(ch) + "%", "chg " + cls(ch))}
-        ${N(fmt(price(s.symbol)), "price")}</div>
+        ${ch == null ? "" : NL("chg", s.symbol, sgn(ch) + "%", "chg " + cls(ch))}
+        ${NL("px", s.symbol, fmt(price(s.symbol)), "price")}</div>
       <div class="l2">${sparkline(s.symbol)}
-        <div class="dist"><div class="lbl ${bc}">${lbl}</div>
+        <div class="dist" data-dist="${esc(s.symbol)}"><div class="lbl ${bc}">${lbl}</div>
           <div class="bar ${bc}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div></div></div>
     </li>`;
   }).join("");
@@ -324,7 +453,7 @@ function renderHero(sym, L) {
       <label class="picker"><span class="cname">${esc(s.coin)}</span><span class="chev">▾</span>
         <select id="coin-select" aria-label="Coin">${opts}</select></label>
       <span class="schip ${L.open ? "long" : "wait"}">${esc(L.open ? t("chip_long") : t("chip_wait"))}</span></div>
-    <div class="hero-price">${N(fmt(price(sym)), "big")}${ch == null ? "" : N(sgn(ch) + "%", "chg " + cls(ch))}</div>`;
+    <div class="hero-price">${NL("px", sym, fmt(price(sym)), "big")}${ch == null ? "" : NL("chg", sym, sgn(ch) + "%", "chg " + cls(ch))}</div>`;
   $("coin-select").addEventListener("change", (e) => { S.coin = e.target.value; renderSignal(); });
 }
 
@@ -377,6 +506,13 @@ function renderTps(L) {
     <div class="tp trail"><div class="k">${esc(t("take"))} 3</div><span class="v">${esc(t("trailing"))}</span></div>`;
 }
 
+/** The timeframe switch above the chart; 15m / 1H / 4H only for coins with Binance spot data. */
+function renderTfs(sym) {
+  if (!hasSpot(sym)) S.tf = "1d";
+  $("tfs").innerHTML = TFS.filter(([tf]) => tf === "1d" || hasSpot(sym))
+    .map(([tf, label]) => `<button type="button" data-tf="${tf}" class="${tf === S.tf ? "on" : ""}">${label}</button>`).join("");
+}
+
 async function renderSignal() {
   const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym];
   $("entered-btn").textContent = t("i_entered");
@@ -386,14 +522,19 @@ async function renderSignal() {
   renderSigNews(sym);
   fitAll();
   $("sig-status").textContent = signalSentence(sym, L);
-  const rows = await loadKlines(sym);
+  renderTfs(sym);
+  const tf = S.tf;
+  if (tf === "1d") await loadKlines(sym, "1d");
+  else await Promise.all([loadKlines(sym, "1d"), loadKlines(sym, tf)]);   // the daily one feeds the 2 ATR filter
+  const rows = await loadKlines(sym, tf);
+  wsKline(sym, tf);
   if (S.coin === sym && S.tab === "signal" && !L.open && L.above) {       // today's candle now known
     renderLadder(sym, L);
     $("sig-status").textContent = signalSentence(sym, L);
     fitAll();
   }
   // only while the Signal tab is on screen: a chart built in a hidden tab has no width to size from
-  if (S.coin !== sym || S.tab !== "signal" || typeof LightweightCharts === "undefined") return;
+  if (S.coin !== sym || S.tf !== tf || S.tab !== "signal" || typeof LightweightCharts === "undefined") return;
   destroyCharts();
   S.chart = LightweightCharts.createChart($("chart"), { ...CHART_THEME(), crosshair: { mode: 0 } });
   const series = S.chart.addCandlestickSeries({
@@ -401,6 +542,7 @@ async function renderSignal() {
     priceFormat: { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 },
   });
   series.setData(rows);
+  S.series = series;
   const line = (p, color, title, style = 2) => series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
   line(s.level, "#4c8dff", t("level"), 1);
   if (L.open) {
@@ -724,12 +866,13 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitA
 /* ---------- navigation ---------- */
 
 function destroyCharts() {
-  if (S.chart) { S.chart.remove(); S.chart = null; }
+  if (S.chart) { S.chart.remove(); S.chart = null; S.series = null; }
   if (S.curveChart) { S.curveChart.remove(); S.curveChart = null; }
 }
 
 function show(tab) {
   if (tab !== S.tab) destroyCharts();
+  if (tab !== "signal") wsKline(null);
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -772,7 +915,19 @@ async function init() {
   show(hashTab());
   await loadLive();
   render();
-  setInterval(async () => { await loadLive(); if (S.tab !== "signal") render(); else renderHeader(); }, 60 * 1000);
+  wsConnect();
+  setInterval(applyLive, 1000);
+  setInterval(async () => {                                   // polling: only while the WebSocket is down
+    if (WS.ok || document.hidden) return;
+    await loadLive();
+    if (S.tab !== "signal") render(); else renderHeader();
+  }, 60 * 1000);
+  document.addEventListener("visibilitychange", async () => {
+    if (document.hidden) { wsClose(); return; }
+    await loadLive();
+    render();
+    wsConnect();
+  });
   setInterval(async () => { await loadNews(); if (S.tab === "news") render(); }, 10 * 60 * 1000);
 }
 
@@ -793,6 +948,10 @@ $("positions").addEventListener("click", (e) => {
   if (card) openCoin(card.dataset.sym);
 });
 $("entered-btn").addEventListener("click", openSheet);
+$("tfs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-tf]");
+  if (b && b.dataset.tf !== S.tf) { S.tf = b.dataset.tf; renderSignal(); }
+});
 $("sheet-close").addEventListener("click", () => { $("sheet").hidden = true; });
 $("sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") $("sheet").hidden = true; });
 $("entry-form").addEventListener("submit", saveSheet);
