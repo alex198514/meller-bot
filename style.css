@@ -553,3 +553,4 @@ html.lt360 .bstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rvol { font-size: 12px; font-weight: 800; text-align: right; margin-top: 5px; white-space: nowrap; color: var(--muted); }
 .rvol.hi { color: var(--green); }
 .sdry { padding-top: 8px; border-top: 1px dashed var(--line-2); }
+.sup .sleft { color: var(--gold); font-weight: 700; margin-top: 2px; }

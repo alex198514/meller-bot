@@ -38,16 +38,17 @@ const I18N = {
     br_since: "Старт", br_trades: "Закрыто сделок", br_win: "Прибыльных", br_r: "Итого R", br_bal: "Баланс", br_dd: "Просадка от пика",
     br_none: "Закрытых сделок пока нет. Бот торгует с {d} и ждёт первый пробой.",
     rs_stop: "стоп", rs_be: "стоп в безубытке", rs_trail: "трейлинг", br_now: "сейчас",
-    setups_title: "Сетапы", setups_explain: "Сетап: закрытие 1H или 4H свечи выше максимума (LONG) или ниже минимума (SHORT) " +
-      "предыдущих 20 свечей, объём свечи не меньше 1.5× среднего, свеча меньше 2.5 ATR. Стоп 1.5 ATR, TP1 +1.5R (закрыть половину, " +
-      "стоп в безубыток), TP2 +3R. Размер на риск $50 от $10 000. Через 48 свечей сетап закрывается. Это не проверенный сигнал " +
-      "стратегии: результаты считаются по 5-минутным свечам с комиссией 0.06% за круг.",
-    setups_none: "Открытых сетапов нет. Сканер проверяет 1H и 4H свечи каждый час.", setups_more: "Показать все {n}", setups_less: "Свернуть",
-    setups_line: "Живые с {d}: сетапов {n} · закрыто {c} · прибыльных {w} · средний {a} · итого {t}",
-    setups_empty: "Живых сетапов с {d} пока не было.",
+    setups_title: "Интрадей-сигналы", setups_explain: "Интрадей-сигнал: закрытие 1H или 4H свечи выше максимума (LONG) или ниже " +
+      "минимума (SHORT) предыдущих 20 свечей, объём свечи не меньше 1.5× среднего, свеча меньше 2.5 ATR. Стоп 1.5 ATR, TP1 +1.5R " +
+      "(закрыть половину, стоп в безубыток), TP2 +3R. Размер на риск $50 от $10 000. Максимум 24 часа в сделке: если за 24 часа " +
+      "не сработал ни тейк, ни стоп, сигнал закрывается по рынку. Новая стратегия, статистика копится: результаты считаются " +
+      "по 5-минутным свечам с комиссией 0.06% за круг.",
+    setups_none: "Открытых сигналов нет. Сканер проверяет 1H и 4H свечи каждый час.", setups_more: "Показать все {n}", setups_less: "Свернуть",
+    setups_line: "Живые с {d}: сигналов {n} · закрыто {c} · прибыльных {w} · средний {a} · итого {t}",
+    setups_empty: "Живых сигналов с {d} пока не было.",
     setups_dry: "Проверка до запуска ({a}–{b}, dry run, не входит в живые): сетапов {n} · прибыльных {w} · средний {r} · итого {t}",
-    setups_cell: "{n} · {w} · ср. {a}", setups_not: "Сетап, не проверенный сигнал. Решение твоё.", setup_lbl: "сетап",
-    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "истёк", su_tp1: "TP1 взят",
+    setups_cell: "{n} · {w} · ср. {a}", setups_not: "Новая стратегия, статистика копится.", setup_lbl: "сигнал",
+    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "закрыт через 24 ч", su_tp1: "TP1 взят", su_left: "закроется через {n}", su_soon: "закрывается", u_h: "{n} ч", u_m: "{n} мин",
     su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
@@ -100,16 +101,17 @@ const I18N = {
     br_since: "Start", br_trades: "Closed trades", br_win: "Win rate", br_r: "Total R", br_bal: "Balance", br_dd: "Drawdown",
     br_none: "No closed trades yet. The bot has been trading since {d} and is waiting for its first breakout.",
     rs_stop: "stop", rs_be: "breakeven stop", rs_trail: "trailing", br_now: "now",
-    setups_title: "Setups", setups_explain: "A setup: a 1H or 4H candle closes above the high (LONG) or below the low (SHORT) " +
-      "of the previous 20 candles, with volume at least 1.5× the average and a range under 2.5 ATR. Stop 1.5 ATR, TP1 +1.5R (close half, " +
-      "stop to breakeven), TP2 +3R. Sized for $50 risk on $10,000. A setup closes after 48 candles. Not a tested strategy signal: " +
-      "results are checked on 5-minute candles after a 0.06% round-trip fee.",
-    setups_none: "No open setups. The scanner checks 1H and 4H candles every hour.", setups_more: "Show all {n}", setups_less: "Show less",
-    setups_line: "Live since {d}: setups {n} · closed {c} · win rate {w} · average {a} · total {t}",
-    setups_empty: "No live setups since {d} yet.",
+    setups_title: "Intraday signals", setups_explain: "An intraday signal: a 1H or 4H candle closes above the high (LONG) or below " +
+      "the low (SHORT) of the previous 20 candles, with volume at least 1.5× the average and a range under 2.5 ATR. Stop 1.5 ATR, " +
+      "TP1 +1.5R (close half, stop to breakeven), TP2 +3R. Sized for $50 risk on $10,000. At most 24 hours in the trade: if neither " +
+      "a take profit nor the stop is hit within 24 hours, the signal is closed at the market. A new strategy, stats are still " +
+      "building: results are checked on 5-minute candles after a 0.06% round-trip fee.",
+    setups_none: "No open signals. The scanner checks 1H and 4H candles every hour.", setups_more: "Show all {n}", setups_less: "Show less",
+    setups_line: "Live since {d}: signals {n} · closed {c} · win rate {w} · average {a} · total {t}",
+    setups_empty: "No live signals since {d} yet.",
     setups_dry: "Check before going live ({a}–{b}, dry run, not part of live): {n} setups · win rate {w} · average {r} · total {t}",
-    setups_cell: "{n} · {w} · avg {a}", setups_not: "A setup, not a tested signal. Your decision.", setup_lbl: "setup",
-    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "expired", su_tp1: "TP1 taken",
+    setups_cell: "{n} · {w} · avg {a}", setups_not: "A new strategy, stats are still building.", setup_lbl: "signal",
+    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "closed at 24 h", su_tp1: "TP1 taken", su_left: "closes in {n}", su_soon: "closing", u_h: "{n} h", u_m: "{n} min",
     su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
@@ -1036,7 +1038,7 @@ function rvol(sym) {
   return v > 0 && s.vol20 > 0 ? v / s.vol20 : null;
 }
 
-/* ---------- intraday setups (1H / 4H, labelled, not tested signals): written by paper.py's watch run ---------- */
+/* ---------- intraday signals (1H / 4H, a new strategy, stats still building): written by paper.py's watch run ---------- */
 
 const SU = () => (S.data && S.data.setups) || { open: [], closed: [], stats: null, rules: { tp_r: [1.5, 3], fee_rt: 0.0006 } };
 const setupById = (id) => SU().open.find((x) => x.id === id) || SU().closed.find((x) => x.id === id) || null;
@@ -1050,6 +1052,14 @@ function setupR(x, px) {
   let mv = Math.min(R.tp_r[1], (sg * (px - x.entry)) / risk);
   mv = Math.max(x.tp1_hit ? 0 : -1, mv);
   return (x.tp1_hit ? 0.5 * R.tp_r[0] + 0.5 * mv : mv) - (R.fee_rt * x.entry) / risk;
+}
+
+/** "закроется через 7 ч" for an open signal (its 24-hour market exit), "" if unknown. */
+function setupLeft(x) {
+  if (x.status !== "open" || !x.expires) return "";
+  const min = Math.round((Date.parse(x.expires) - Date.now()) / 60000);
+  if (min <= 0) return t("su_soon");
+  return t("su_left", { n: min >= 60 ? t("u_h", { n: Math.round(min / 60) }) : t("u_m", { n: min }) });
 }
 
 function setupStatus(x) {
@@ -1066,7 +1076,8 @@ function renderSetups() {
       const r = setupR(x, setupPx(x));
       return `<li class="card btrade sup" data-sid="${esc(x.id)}">${badge(x.symbol, x.coin)}
         <div class="what"><div class="btop"><span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>${x.tp1_hit ? `<span class="stag">TP1</span>` : ""}</div>
-          <div class="when">${N(fmt(x.entry))} · ${esc(t("stop").toLowerCase())} ${N(fmt(x.stop))} · ${esc(ago(x.time))}</div></div>
+          <div class="when">${N(fmt(x.entry))} · ${esc(t("stop").toLowerCase())} ${N(fmt(x.stop))}</div>
+          <div class="when sleft">${esc(setupLeft(x))}</div></div>
         <div class="res"><span class="num r ${cls(r)}" data-srs="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgn(r)}R</span></div></li>`;
     }).join("")}</ul>` + (open.length > 5 ? `<button class="more smore" id="setups-more" type="button">${esc(S.setupsAll ? t("setups_less") : t("setups_more", { n: open.length }))}</button>` : "")
     : `<div class="card empty small">${esc(t("setups_none"))}</div>`;
@@ -1103,7 +1114,7 @@ function renderSetupBanner(sym) {
   const time = `${x.time.slice(8, 10)}.${x.time.slice(5, 7)} ${x.time.slice(11, 16)} UTC`;
   el.innerHTML = `<div class="shead"><span class="sside ${x.side}">${esc(t("setup_lbl").toUpperCase())} ${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>
       <button class="sx" id="setup-x" type="button" aria-label="${esc(t("close"))}">✕</button></div>
-    <div class="when">${esc(time)} · ${esc(setupStatus(x))}</div>
+    <div class="when">${esc(time)} · ${esc(setupStatus(x))}${x.status === "open" ? " · " + esc(setupLeft(x)) : ""}</div>
     <div class="slv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span><span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}</span>
       <span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}</span><span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}</span></div>
     <div class="snow ${cls(r)}">${esc(t("su_now", { r: sgn(r) + "R" }))}</div><div class="snote">${esc(t("setups_not"))}</div>`;
@@ -1752,6 +1763,11 @@ $("tabbar").addEventListener("click", (e) => {
 function track(name) {
   try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) {}
 }
+setInterval(() => {                                   // the "closes in N h" countdown
+  if (!S.data) return;
+  if (S.tab === "market") { renderSetups(); fitAll(); }
+  if (S.tab === "signal" && S.setupView) renderSetupBanner(S.coin);
+}, 60000);
 $("setups").addEventListener("click", (e) => {
   if (e.target.closest("#setups-more")) { S.setupsAll = !S.setupsAll; renderSetups(); fitAll(); return; }
   const card = e.target.closest(".sup[data-sid]"), x = card && setupById(card.dataset.sid);
