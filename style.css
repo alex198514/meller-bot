@@ -614,3 +614,47 @@ html.lt360 .sggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .back-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 body.coin-open .tabbar { display: none; }
 body.coin-open main { padding-bottom: calc(var(--sa-b) + 24px); }
+
+/* market filter line (Signals tab) */
+.mfline { margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; background: var(--card-2); font-size: 14px; font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
+.mfline.bear { color: var(--red); }
+.mfline.bull { color: var(--green); }
+
+/* against-the-market label and the with / against stats row */
+.against { margin: 6px 0 2px; font-size: 13px; font-weight: 800; color: var(--gold); overflow-wrap: anywhere; }
+.sgwarow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.sgwa { background: var(--card-2); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.sgwa .k { display: block; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sgwa.ag .k { color: var(--gold); }
+.sgwa .v { display: block; font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* wave-3 signals (experimental) */
+.wavebadge { display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; color: var(--blue, #4c8dff); background: rgba(76, 141, 255, 0.14); }
+.sschip.tp { color: var(--on-green); background: var(--green); }
+.sgwa.wv .k { color: var(--blue, #4c8dff); }
+.sgwarow + .sgwarow { margin-top: 8px; }
+
+/* ---------- Waves tab (automatic Elliott labels) ---------- */
+.wsearch { position: relative; margin-bottom: 10px; }
+#w-search { width: 100%; padding: 13px 15px; border-radius: 14px; font-size: 17px; outline: none; background: var(--card); border: 1px solid var(--line-2); }
+#w-search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(var(--blue-rgb), 0.18); }
+.wsugg { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; padding: 4px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+.wsugg button { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 10px; border: 0; border-radius: 10px;
+  background: none; color: var(--text); font-size: 16px; text-align: left; cursor: pointer; }
+.wsugg button:active, .wsugg button:hover { background: var(--card-2); }
+.wsugg .cn { font-weight: 800; flex: 0 0 auto; }
+.wsugg .nm, .whead .nm { color: var(--muted); font-size: 14px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wnone { padding: 10px; color: var(--muted); font-size: 15px; }
+#w-tf { margin-bottom: 12px; }
+.whead { display: flex; align-items: center; gap: 10px; margin: 0 2px 10px; min-width: 0; }
+.whead .cn { font-weight: 800; font-size: 20px; flex: 0 0 auto; }
+.whead .tfb { margin-left: auto; flex: 0 0 auto; font-size: 13px; font-weight: 800; padding: 2px 8px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--muted); }
+.wtext { margin: 4px 2px 8px; font-size: 16px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.wtext span { display: block; }
+.wtext .muted { color: var(--muted); font-weight: 500; }
+.wnote { margin: 10px 2px 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.lvl-legend i.wimp { border-top: 2px solid var(--blue); }
+.lvl-legend i.wzone { height: 10px; border: 0; border-radius: 3px; background: rgba(var(--gold-rgb), 0.3); }
+.lvl-legend i.wcancel { border-top: 2px dashed var(--red); }
+.wbtn { margin: 4px 0 14px; }

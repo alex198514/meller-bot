@@ -4,6 +4,10 @@
 const I18N = {
   ru: {
     tab_signals: "Сигналы", back: "Назад",
+    mf_bear: "Рынок медвежий: лонги = против рынка", mf_bull: "Рынок бычий: шорты = против рынка",
+    mf_side: "Боковик: оба направления по рынку", mf_none: "Нет данных о рынке",
+    against: "⚠️ против рынка", sg_with: "По рынку", sg_against: "Против рынка",
+    wave_badge: "🌊 Волна 3", sg_breakout: "Пробой", sg_wave: "Волна 3", target: "Цель", ss_tp: "цель взята", su_tp: "цель",
     sg_since: "С {d}", sg_7d: "За 7 дней", sg_n: "Сигналов", sg_closed: "Закрыто", sg_win: "Прибыльных", sg_avg: "Средний R",
     sg_tot: "Итого R", sg_few: "Мало данных, статистика копится.", f_all: "Все", f_open: "В работе", f_closed: "Закрытые",
     ss_open: "в работе", ss_tp1: "TP1 взят, стоп в безубыток", ss_tp1_be: "TP1 взят, закрыт в безубытке", ss_tp2: "TP2 взят",
@@ -11,6 +15,17 @@ const I18N = {
     sg_now: "Сейчас", sg_exit: "Выход", sg_empty: "Сейчас открытых сигналов нет. Сканер проверяет рынок каждый час в :35.",
     sg_latest: "Последние закрытые", sg_nomatch: "Нет сигналов по этому фильтру.", sg_more: "Показать ещё",
     slow_title: "Медленный бот (1D)", slow_sleep: "Спит: рынок медвежий, бот покупает только пробои вверх.",
+    tab_waves: "Волны", w_title: "Волны Эллиотта", w_search: "Монета: BTC, ETH, SOL…", w_btn: "🌊 Волны {coin}",
+    w_nomatch: "Нет такой монеты среди наших 75", w_imp_lg: "Импульс 1-5", w_zone_lg: "Зона возможного отскока 50–61.8%",
+    w_cancel_lg: "Отмена сценария", w_cancel: "отмена сценария", w_loading: "Загружаю свечи…",
+    w_nodata: "Нет свечей Binance по этой монете на этом таймфрейме.", w_few: "Мало свингов для разметки.",
+    w_up: "вверх", w_down: "вниз", w_below: "ниже", w_above: "выше",
+    w_done: "5 волн {d} завершены, идёт коррекция, цена у {lvl}%.", w_ret: "5 волн {d} завершены, идёт коррекция, откат {n}%.",
+    w_beyond: "5 волн {d} завершены, но цена ушла дальше конца волны 5: импульс может продолжаться.",
+    w_broken: "5 волн {d} были, но цена ушла за начало волны 1: сценарий отменён.",
+    w_zone_txt: "Зона отскока 50–61.8%: {a}–{b}. Отмена {side} {z}.",
+    w_noimp: "Чёткого 5-волнового импульса нет, последние 3 свинга отмечены как A-B-C.",
+    w_note: "Автоматическая разметка по правилам Эллиотта, не сигнал на вход. Наш тест: вход по волнам без устойчивого плюса.",
     tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_overview: "Обзор", tab_news: "Новости",
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
@@ -75,6 +90,10 @@ const I18N = {
   },
   en: {
     tab_signals: "Signals", back: "Back",
+    mf_bear: "Bear market: longs = against the market", mf_bull: "Bull market: shorts = against the market",
+    mf_side: "Sideways: both directions are with the market", mf_none: "No market data",
+    against: "⚠️ against the market", sg_with: "With market", sg_against: "Against market",
+    wave_badge: "🌊 Wave 3", sg_breakout: "Breakout", sg_wave: "Wave 3", target: "Target", ss_tp: "target hit", su_tp: "target",
     sg_since: "Since {d}", sg_7d: "Last 7 days", sg_n: "Signals", sg_closed: "Closed", sg_win: "Win rate", sg_avg: "Avg R",
     sg_tot: "Total R", sg_few: "Not enough data yet, stats are still building.", f_all: "All", f_open: "Open", f_closed: "Closed",
     ss_open: "open", ss_tp1: "TP1 hit, stop at breakeven", ss_tp1_be: "TP1 hit, closed at breakeven", ss_tp2: "TP2 hit",
@@ -82,6 +101,17 @@ const I18N = {
     sg_now: "Now", sg_exit: "Exit", sg_empty: "No open signals right now. The scanner checks the market every hour at :35.",
     sg_latest: "Latest closed", sg_nomatch: "No signals for this filter.", sg_more: "Show more",
     slow_title: "Slow bot (1D)", slow_sleep: "Asleep: the market is bearish, the bot only buys upside breakouts.",
+    tab_waves: "Waves", w_title: "Elliott waves", w_search: "Coin: BTC, ETH, SOL…", w_btn: "🌊 {coin} waves",
+    w_nomatch: "Not one of our 75 coins", w_imp_lg: "Impulse 1-5", w_zone_lg: "Possible bounce zone 50–61.8%",
+    w_cancel_lg: "Scenario invalidation", w_cancel: "invalidation", w_loading: "Loading candles…",
+    w_nodata: "No Binance candles for this coin on this timeframe.", w_few: "Too few swings to label.",
+    w_up: "up", w_down: "down", w_below: "below", w_above: "above",
+    w_done: "5 waves {d} complete, a correction is under way, price near {lvl}%.", w_ret: "5 waves {d} complete, a correction is under way, {n}% retraced.",
+    w_beyond: "5 waves {d} complete, but price went past the end of wave 5: the impulse may be extending.",
+    w_broken: "5 waves {d} formed, but price moved past the start of wave 1: scenario invalidated.",
+    w_zone_txt: "Bounce zone 50–61.8%: {a}–{b}. Invalidation {side} {z}.",
+    w_noimp: "No clear 5-wave impulse; the last 3 swings are labelled A-B-C.",
+    w_note: "Automatic labels by Elliott's rules, not an entry signal. Our test: trading the waves showed no steady profit.",
     tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_overview: "Overview", tab_news: "News",
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
@@ -152,7 +182,7 @@ const S = {
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
   theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   tab: "signals", prevTab: "signals", coinPushed: false, sgFilter: "all", sgShown: 20, coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
-  news: null, newsFilter: "all", tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
+  news: null, wCoin: null, wTf: "4h", wKey: null, wChart: null, wk: {}, tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
   setupView: null, setupsAll: false,
 };
 
@@ -1068,6 +1098,10 @@ const tfLabel = (tf) => tf.toUpperCase();
 function setupR(x, px) {
   const sg = x.side === "long" ? 1 : -1, risk = Math.abs(x.entry - x.stop), R = SU().rules;
   if (x.status !== "open" && x.r != null) return x.r;
+  if (x.tp.length === 1) {                                 // wave 3: one target, no breakeven step
+    const mv1 = Math.max(-1, Math.min((sg * (x.tp[0] - x.entry)) / risk, (sg * (px - x.entry)) / risk));
+    return mv1 - (R.fee_rt * x.entry) / risk;
+  }
   let mv = Math.min(R.tp_r[1], (sg * (px - x.entry)) / risk);
   mv = Math.max(x.tp1_hit ? 0 : -1, mv);
   return (x.tp1_hit ? 0.5 * R.tp_r[0] + 0.5 * mv : mv) - (R.fee_rt * x.entry) / risk;
@@ -1097,8 +1131,9 @@ function sgLiveHtml(x) {
   const open = x.status === "open", px = open ? setupPx(x) : x.exit != null ? x.exit : x.last;
   const r = setupR(x, px), pct = (100 * r * sgRisk(x)) / x.entry;
   const mv = (sgDir(x) * (px - x.entry)) / sgRisk(x);
-  const at = Math.max(0, Math.min(1, (mv + 1) / (1 + SU().rules.tp_r[1])));
-  const tp1 = (1 + SU().rules.tp_r[0]) / (1 + SU().rules.tp_r[1]), e = 1 / (1 + SU().rules.tp_r[1]);
+  const top = x.tp.length === 1 ? (sgDir(x) * (x.tp[0] - x.entry)) / sgRisk(x) : SU().rules.tp_r[1];
+  const at = Math.max(0, Math.min(1, (mv + 1) / (1 + top)));
+  const tp1 = x.tp.length === 1 ? 1 : (1 + SU().rules.tp_r[0]) / (1 + top), e = 1 / (1 + top);
   return `<div class="ln1"><span class="k">${esc(open ? t("sg_now") : t("sg_exit"))}</span>${N(fmt(px))}
       <span class="num rr ${cls(r)}">${sgn(r)}R <small>${sgn(pct)}%</small></span></div>
     <div class="sgbar" aria-hidden="true"><i class="zl" style="width:${(100 * e).toFixed(1)}%"></i><i class="zw" style="width:${(100 * (1 - e)).toFixed(1)}%"></i>
@@ -1110,13 +1145,16 @@ function sgCard(x) {
   const pc = (p) => sgn(100 * (p / x.entry - 1), 1) + "%";
   const k = sgKey(x);
   return `<li class="card sgc" data-sid="${esc(x.id)}">
+    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : ""}
     <div class="sgh">${badge(x.symbol, x.coin)}<span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${esc(t("side_" + x.side))}</span>
       <span class="tfb">${tfLabel(x.tf)}</span><span class="tm">${esc(sgTime(x.time))}</span></div>
+    ${x.against ? `<div class="against">${esc(t("against"))}</div>` : ""}
     <div class="sgst"><span class="sschip ${k}">${esc(t("ss_" + k))}</span>${x.status === "open" ? `<span class="left">${esc(setupLeft(x))}</span>` : ""}</div>
     <div class="sglv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span>
       <span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}<small class="num down">${pc(x.stop)}</small></span>
-      <span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>
-      <span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}<small class="num up">${pc(x.tp[1])}</small></span></div>
+      ${x.tp.length === 1 ? `<span><span class="k">${esc(t("target"))}</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>` :
+      `<span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>
+      <span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}<small class="num up">${pc(x.tp[1])}</small></span>`}</div>
     ${x.notional ? `<div class="sgsize">${esc(t("sg_size", { n: Math.round(x.notional).toLocaleString("en-US"), m: Math.round(x.margin).toLocaleString("en-US") }))}</div>` : ""}
     <div class="sglive" data-sgsym="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgLiveHtml(x)}</div></li>`;
 }
@@ -1137,8 +1175,15 @@ function renderSignals() {
       ${c("sg_avg", rr(a.avg_r), a.avg_r == null ? "" : cls(a.avg_r))}${c("sg_tot", rr(a.closed ? a.total_r : null, 1), a.closed ? cls(a.total_r) : "")}</div></div>`;
   };
   const closedN = su.stats ? su.stats.all.closed : 0;
+  const wa = (st) => {                                      // live since start: with vs against the market
+    if (!st || !st.with) return "";
+    const one = (k, a) => `<div class="sgwa ${k === "against" ? "ag" : k === "wave" ? "wv" : ""}"><span class="k">${esc(t("sg_" + k))}</span>
+      <span class="v num">${a.n} · ${a.closed ? `<span class="${cls(a.avg_r)}">${rr(a.avg_r)}</span>` : "—"}</span></div>`;
+    return `<div class="sgwarow">${one("with", st.with)}${one("against", st.against)}</div>` +
+      (st.breakout ? `<div class="sgwarow">${one("breakout", st.breakout)}${one("wave", st.wave)}</div>` : "");
+  };
   $("sg-stats").innerHTML = `<div class="card sgstats">${per(t("sg_since", { d: su.live_since ? dayLabel(su.live_since, true) : "—" }), su.stats)}
-    ${per(t("sg_7d"), su.stats_7d)}${closedN < 20 ? `<div class="sgfew">${esc(t("sg_few"))}</div>` : ""}</div>`;
+    ${per(t("sg_7d"), su.stats_7d)}${wa(su.stats)}${closedN < 20 ? `<div class="sgfew">${esc(t("sg_few"))}</div>` : ""}</div>`;
   $("sg-filters").innerHTML = SG_FILTERS.map(([f, k]) =>
     `<button type="button" data-f="${f}" class="${S.sgFilter === f ? "on" : ""}" aria-pressed="${S.sgFilter === f}">${esc(k.startsWith("f_") ? t(k) : k)}</button>`).join("");
   const byTime = (a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0);
@@ -1157,6 +1202,10 @@ function renderSignals() {
     const rows = all.filter((x) => sgMatch(f, x));
     html = rows.length ? list(rows) : `<div class="card sgempty">${esc(t("sg_nomatch"))}</div>`;
   }
+  if (su.filter) {                                          // market filter for new signals (set by the scanner)
+    const m = su.filter.market;
+    html = `<div class="mfline ${m === "bear" ? "bear" : m === "bull" ? "bull" : ""}">${esc(t(m === "bear" || m === "bull" || m === "side" ? "mf_" + m : "mf_none"))}</div>` + html;
+  }
   $("sg-list").innerHTML = html;
 }
 
@@ -1172,9 +1221,11 @@ function renderSetupBanner(sym) {
   const time = `${x.time.slice(8, 10)}.${x.time.slice(5, 7)} ${x.time.slice(11, 16)} UTC`;
   el.innerHTML = `<div class="shead"><span class="sside ${x.side}">${esc(t("setup_lbl").toUpperCase())} ${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>
       <button class="sx" id="setup-x" type="button" aria-label="${esc(t("close"))}">✕</button></div>
+    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : ""}${x.against ? `<div class="against">${esc(t("against"))}</div>` : ""}
     <div class="when">${esc(time)} · ${esc(setupStatus(x))}${x.status === "open" ? " · " + esc(setupLeft(x)) : ""}</div>
     <div class="slv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span><span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}</span>
-      <span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}</span><span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}</span></div>
+      ${x.tp.length === 1 ? `<span><span class="k">${esc(t("target"))}</span>${N(fmt(x.tp[0]), "up")}</span>` :
+      `<span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}</span><span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}</span>`}</div>
     <div class="snow ${cls(r)}">${esc(t("su_now", { r: sgn(r) + "R" }))}</div><div class="snote">${esc(t("setups_not"))}</div>`;
 }
 
@@ -1341,6 +1392,7 @@ function renderTfs(sym) {
 async function renderSignal() {
   const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym];
   $("coin-back-t").textContent = t("back");
+  $("coin-waves").textContent = t("w_btn", { coin: S.bySym[sym].coin });
   storeSet("meller_last_coin", sym);
   $("entered-btn").textContent = t("i_entered");
   renderHero(sym, L);
@@ -1391,8 +1443,8 @@ async function renderSignal() {
   if (su) {                                                                // the setup opened from the Market tab
     line(su.entry, PAL().gold, t("setup_lbl"));
     line(su.stop, PAL().down, t("stop"));
-    line(su.tp[0], PAL().up, "TP1");
-    line(su.tp[1], PAL().up, "TP2");
+    if (su.tp.length === 1) line(su.tp[0], PAL().up, t("target"));
+    else { line(su.tp[0], PAL().up, "TP1"); line(su.tp[1], PAL().up, "TP2"); }
     if (tf === su.tf && rows.length && typeof rows[0].time === "number") {
       const at = Date.parse(su.time) / 1000 - TF_SEC[su.tf];
       if (rows.some((r) => r.time === at)) series.setMarkers([{ time: at, position: su.side === "long" ? "belowBar" : "aboveBar",
@@ -1444,7 +1496,7 @@ function openSheet() {
     f.entry.value = fmtNum(x.entry);
     f.stop.value = fmtNum(x.stop);
     f.tp1.value = fmtNum(x.tp[0]);
-    f.tp2.value = fmtNum(x.tp[1]);
+    f.tp2.value = x.tp.length > 1 ? fmtNum(x.tp[1]) : "";
     f.size.value = (x.notional || (50 / sgRisk(x)) * x.entry).toFixed(2);
     $("sheet-title").textContent = `${t("i_entered")}: ${S.bySym[sym].coin} ${t("side_" + x.side)} ${tfLabel(x.tf)}`;
     $("sheet-hint").textContent = t("f_hint");
@@ -1692,18 +1744,13 @@ function newsItem(it) {
   </a>`;
 }
 
-function renderNews() {
-  document.querySelectorAll("#news-filter button").forEach((b) => b.classList.toggle("on", b.dataset.f === S.newsFilter));
-  const items = ((S.news && S.news.items) || []).filter((it) => S.newsFilter === "all" || it.symbols.length);
-  $("news-meta").textContent = S.news ? t("news_meta", { n: S.news.items.length }) : "";
-  $("news-list").innerHTML = items.length ? items.map(newsItem).join("") : `<div class="card empty">${esc(t("news_none"))}</div>`;
-}
-
+/** The coin page's news: the last 3 headlines about this coin (delisting first); no block when there are none. */
 function renderSigNews(sym) {
+  const items = ((S.news && S.news.items) || []).filter((it) => it.symbols.includes(sym))
+    .sort((a, b) => (b.delisting ? 1 : 0) - (a.delisting ? 1 : 0)).slice(0, 3);   // stable: newest first within each
+  $("sig-news-title").hidden = !items.length;
   $("sig-news-title").textContent = t("news_coin", { coin: S.bySym[sym].coin });
-  const items = ((S.news && S.news.items) || []).filter((it) => it.symbols.includes(sym)).slice(0, 3);
-  $("sig-news").innerHTML = items.length ? items.map(newsItem).join("")
-    : `<div class="card empty small">${esc(t("news_coin_none"))}</div>`;
+  $("sig-news").innerHTML = items.map(newsItem).join("");
 }
 
 /* ---------- fitting: one-line rows step their fonts down instead of cutting a number ---------- */
@@ -1758,7 +1805,180 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitA
 
 /* ---------- navigation ---------- */
 
+/* ---------- Waves tab: automatic Elliott labels (ZigZag on closes, 3 x ATR(14), the rules of wave_test.py) ---------- */
+
+const W_K = 3, W_N = 14, W_FIB = [0.382, 0.5, 0.618, 0.786], W_BARS = 500;
+
+/** ATR(14) per candle as in wave_test.atrs: mean of the last 14 true ranges, null before there are 14. */
+function wAtrs(b) {
+  const a = new Array(b.length).fill(null), trs = [];
+  for (let i = 1; i < b.length; i++) {
+    trs.push(Math.max(b[i].high - b[i].low, Math.abs(b[i].high - b[i - 1].close), Math.abs(b[i].low - b[i - 1].close)));
+    if (trs.length >= W_N) a[i] = trs.slice(-W_N).reduce((x, y) => x + y, 0) / W_N;
+  }
+  return a;
+}
+
+/** ZigZag pivots on closes, reversal = 3 x ATR(14) at the bar that confirms it (wave_test.run), oldest first:
+ *  [{i, p, type: "H" | "L"}], plus the unconfirmed extreme of the current leg ({tent: true}). */
+function wPivots(b) {
+  const a = wAtrs(b), piv = [];
+  let dir = 0, ext = 0;
+  for (let i = W_N + 1; i < b.length; i++) {
+    if (a[i] == null) continue;
+    const c = b[i].close;
+    if (dir === 0) { dir = 1; ext = i; continue; }
+    const thr = W_K * a[i];
+    if (dir === 1) {
+      if (c > b[ext].close) ext = i;
+      else if (b[ext].close - c >= thr) { piv.push({ i: ext, p: b[ext].close, type: "H" }); dir = -1; ext = i; }
+    } else if (c < b[ext].close) ext = i;
+    else if (c - b[ext].close >= thr) { piv.push({ i: ext, p: b[ext].close, type: "L" }); dir = 1; ext = i; }
+  }
+  if (dir && (!piv.length || ext > piv[piv.length - 1].i)) piv.push({ i: ext, p: b[ext].close, type: dir === 1 ? "H" : "L", tent: true });
+  return piv;
+}
+
+/** The 5-wave impulse starting at confirmed pivot j, or null. Elliott's rules: wave 2 does not go beyond the start
+ *  of wave 1, wave 3 is not the shortest of 1, 3, 5, wave 4 does not enter the price range of wave 1. */
+function wImpulse(piv, j) {
+  const q = piv.slice(j, j + 6);
+  if (q.length < 6 || q.some((x) => x.tent)) return null;
+  const s = q[0].type === "L" ? 1 : -1, v = q.map((x) => s * x.p);
+  const w1 = v[1] - v[0], w3 = v[3] - v[2], w5 = v[5] - v[4];
+  if (w1 <= 0 || w3 <= 0 || w5 <= 0 || v[2] <= v[0] || (w3 < w1 && w3 < w5) || v[4] <= v[1]) return null;
+  return { up: s === 1, j, q };
+}
+
+/** Labels for the chart and the text: the latest impulse among the last pivots (1-5, then A-B-C after it), or the
+ *  last 3 swings as A-B-C. */
+function wCount(b) {
+  const piv = wPivots(b), conf = piv.filter((x) => !x.tent).length;
+  let imp = null;
+  for (let j = conf - 6; j >= Math.max(0, conf - 12) && !imp; j--) imp = wImpulse(piv, j);
+  const labels = [];
+  if (imp) {
+    imp.q.slice(1).forEach((x, k) => labels.push({ ...x, txt: String(k + 1), imp: true }));
+    piv.slice(imp.j + 6, imp.j + 9).forEach((x, k) => labels.push({ ...x, txt: "ABC"[k] }));
+  } else piv.slice(-3).forEach((x, k, arr) => labels.push({ ...x, txt: "ABC"[k + 3 - arr.length] }));
+  return { piv, imp, labels };
+}
+
+const wFibPx = (imp, r) => imp.q[5].p - r * (imp.q[5].p - imp.q[0].p);
+const wPct = (r) => String(+(r * 100).toFixed(1));
+
+/** One or two lines of text built by the rules: the phase, the bounce zone and the invalidation level. */
+function wText(c, close) {
+  if (!c.imp) return [t(c.labels.length === 3 ? "w_noimp" : "w_few")];
+  const imp = c.imp, d = t(imp.up ? "w_up" : "w_down");
+  const ret = (imp.q[5].p - close) / (imp.q[5].p - imp.q[0].p);
+  if (ret > 1) return [t("w_broken", { d })];
+  let l1;
+  if (ret < 0) l1 = t("w_beyond", { d });
+  else {
+    const near = W_FIB.find((r) => Math.abs(ret - r) <= 0.04);
+    l1 = near ? t("w_done", { d, lvl: wPct(near) }) : t("w_ret", { d, n: Math.round(ret * 100) });
+  }
+  const z = [wFibPx(imp, 0.5), wFibPx(imp, 0.618)].sort((x, y) => x - y);
+  return [l1, t("w_zone_txt", { a: fmt(z[0]), b: fmt(z[1]), side: t(imp.up ? "w_below" : "w_above"), z: fmt(imp.q[0].p) })];
+}
+
+async function wLoad(sym, tf) {
+  const key = sym + "|" + tf, c = S.wk[key];
+  if (c && Date.now() - c.at < 5 * 60 * 1000) return c.rows;
+  const hosts = [...new Set([S.host, "https://api.binance.com", "https://data-api.binance.vision"].filter(Boolean))];
+  for (const host of hosts) {
+    try {
+      const r = await fetch(`${host}/api/v3/klines?symbol=${sym}&interval=${tf}&limit=${W_BARS}`);
+      if (!r.ok) continue;
+      const rows = (await r.json()).map((k) => ({ time: k[0] / 1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] }));
+      S.wk[key] = { at: Date.now(), rows };
+      return rows;
+    } catch (e) { /* next host */ }
+  }
+  if (tf === "1d") return S.bySym[sym].ohlc.map(([d, o, h, l, cl]) => ({ time: d, open: o, high: h, low: l, close: cl }));
+  return [];
+}
+
+function wSuggest() {
+  const q = $("w-search").value.trim().toUpperCase(), box = $("w-sugg");
+  if (!q) { box.hidden = true; box.innerHTML = ""; return; }
+  const all = S.data.symbols;
+  const hits = all.filter((s) => s.coin.startsWith(q))
+    .concat(all.filter((s) => !s.coin.startsWith(q) && s.coin.includes(q))).slice(0, 6);
+  box.innerHTML = hits.length ? hits.map((s) => `<button type="button" data-wsym="${esc(s.symbol)}">${badge(s.symbol, s.coin)}
+      <span class="cn">${esc(s.coin)}</span></button>`).join("")
+    : `<div class="wnone">${esc(t("w_nomatch"))}</div>`;
+  box.hidden = false;
+}
+
+function wPick(sym) {
+  S.wCoin = sym;
+  $("w-search").value = "";
+  $("w-sugg").hidden = true;
+  try { history.replaceState(null, "", "#waves/" + sym); } catch (e) { /* file:// */ }
+  renderWaves();
+  fitAll();
+}
+
+function renderWaves() {
+  if (!S.wCoin || !S.bySym[S.wCoin]) {                   // the last coin viewed, else BTC
+    const last = storeGet("meller_last_coin");
+    S.wCoin = last && S.bySym[last] ? last : S.bySym.BTCUSDT ? "BTCUSDT" : S.data.symbols[0].symbol;
+  }
+  const sym = S.wCoin, s = S.bySym[sym], tf = S.wTf;
+  $("w-title").textContent = t("w_title");
+  $("w-search").placeholder = t("w_search");
+  document.querySelectorAll("#w-tf button").forEach((b) => b.classList.toggle("on", b.dataset.tf === tf));
+  $("w-head").innerHTML = `${badge(sym, s.coin)}<span class="cn">${esc(s.coin)}</span>
+    <span class="tfb">${tf.toUpperCase()}</span>`;
+  $("w-legend").innerHTML = `<span><i class="wimp"></i>${esc(t("w_imp_lg"))}</span><span><i class="wzone"></i>${esc(t("w_zone_lg"))}</span>
+    <span><i class="wcancel"></i>${esc(t("w_cancel_lg"))}</span>`;
+  $("w-note").textContent = t("w_note");
+  const key = [sym, tf, S.theme, S.lang].join("|");
+  if (key !== S.wKey || !S.wChart) drawWaves(sym, tf, key);
+}
+
+async function drawWaves(sym, tf, key) {
+  S.wKey = key;
+  if (S.wChart) { S.wChart.remove(); S.wChart = null; }
+  $("w-text").innerHTML = `<span class="muted">${esc(t("w_loading"))}</span>`;
+  const rows = await wLoad(sym, tf);
+  if (S.wKey !== key || S.tab !== "waves" || typeof LightweightCharts === "undefined") return;
+  if (S.wChart) { S.wChart.remove(); S.wChart = null; }
+  if (!rows.length) { $("w-text").textContent = t("w_nodata"); return; }
+  const P = PAL(), pf = { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 };
+  const ch = LightweightCharts.createChart($("w-chart"), { ...CHART_THEME(), crosshair: { mode: 0 } });
+  S.wChart = ch;
+  const series = ch.addCandlestickSeries({ upColor: P.up, downColor: P.down, borderVisible: false, wickUpColor: P.up, wickDownColor: P.down, priceFormat: pf });
+  series.setData(rows);
+  const c = wCount(rows), at = (x) => rows[x.i].time;
+  const lineOpts = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: pf };
+  if (c.piv.length > 1) {                                          // the whole ZigZag, thin
+    ch.addLineSeries({ ...lineOpts, color: `rgba(${P.fg},0.35)`, lineWidth: 1 }).setData(c.piv.map((x) => ({ time: at(x), value: x.p })));
+  }
+  if (c.imp) {
+    const imp = c.imp;
+    ch.addLineSeries({ ...lineOpts, color: P.blue, lineWidth: 2 }).setData(imp.q.map((x) => ({ time: at(x), value: x.p })));
+    const z50 = wFibPx(imp, 0.5), z618 = wFibPx(imp, 0.618), fill = `rgba(${hexRgb(P.gold)},0.3)`, none = "rgba(0,0,0,0)";
+    const zone = ch.addBaselineSeries({ ...lineOpts, baseValue: { type: "price", price: z50 }, topLineColor: none, bottomLineColor: none,
+      topFillColor1: fill, topFillColor2: fill, bottomFillColor1: fill, bottomFillColor2: fill, lineWidth: 1 });
+    zone.setData(rows.slice(imp.q[5].i).map((r) => ({ time: r.time, value: z618 })));
+    W_FIB.forEach((r) => series.createPriceLine({ price: wFibPx(imp, r), color: P.gold, lineWidth: 1, lineStyle: 2, axisLabelVisible: true,
+      title: wPct(r) + "%" }));
+    series.createPriceLine({ price: imp.q[0].p, color: P.down, lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: t("w_cancel") });
+  }
+  series.setMarkers(c.labels.map((x) => ({ time: at(x), position: x.type === "H" ? "aboveBar" : "belowBar", shape: "circle", size: 0.6,
+    color: x.imp ? P.blue : P.muted, text: x.txt })));
+  ch.timeScale().fitContent();
+  $("w-text").innerHTML = wText(c, rows[rows.length - 1].close).map((l) => `<span>${esc(l)}</span>`).join("");
+}
+
+const hexRgb = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)).join(",");
+
 function destroyCharts() {
+  if (S.wChart) { S.wChart.remove(); S.wChart = null; }
+  S.wKey = null;
   if (S.chart) { S.chart.remove(); S.chart = null; S.series = null; S.lv = null; }
   if (S.curveChart) { S.curveChart.remove(); S.curveChart = null; }
 }
@@ -1768,11 +1988,12 @@ function show(tab) {
   if (tab !== "signal") {
     S.prevTab = tab;
     S.coinPushed = false;
-    try { history.replaceState(null, "", "#" + tab); } catch (e) { /* file:// */ }
+    try { history.replaceState(null, "", "#" + tab + (tab === "waves" && S.wCoin ? "/" + S.wCoin : "")); } catch (e) { /* file:// */ }
   }
   document.body.classList.toggle("coin-open", tab === "signal");
   if (tab !== "signal") wsKline(null);
   if (tab !== "overview") closeBubbles();
+  if (tab === "waves" && S.tab !== "waves") track("waves");
   S.tab = tab;
   document.querySelectorAll(".tab").forEach((el) => { el.hidden = el.id !== "tab-" + tab; });
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -1787,8 +2008,8 @@ function render() {
   if (S.tab === "market") renderMarket();
   if (S.tab === "signal") renderSignal();
   if (S.tab === "positions") renderPositions();
+  if (S.tab === "waves") renderWaves();
   if (S.tab === "overview") renderOverview();
-  if (S.tab === "news") renderNews();
   fitAll();
 }
 
@@ -1817,7 +2038,8 @@ function hashTab() {
     if (coin && S.bySym[coin]) S.coin = coin; else if (last && S.bySym[last]) S.coin = last;
   }
   if (tab === "challenge") tab = "overview";
-  return ["signals", "market", "signal", "positions", "news", "overview"].includes(tab) ? tab : S.tab === "signal" ? S.prevTab : S.tab;
+  if (tab === "waves" && coin && S.bySym[coin]) S.wCoin = coin;
+  return ["signals", "market", "signal", "positions", "waves", "overview"].includes(tab) ? tab : S.tab === "signal" ? S.prevTab : S.tab;
 }
 window.addEventListener("hashchange", () => { if (S.data) show(hashTab()); });
 
@@ -1848,7 +2070,7 @@ async function init() {
     render();
     wsConnect();
   });
-  setInterval(async () => { await loadNews(); if (S.tab === "news") render(); }, 10 * 60 * 1000);
+  setInterval(async () => { await loadNews(); if (S.tab === "signal") renderSigNews(S.coin); }, 10 * 60 * 1000);
   setInterval(async () => {                                   // Fear & Greed: every 10 minutes while the app is open
     if (document.hidden) return;
     await loadFng();
@@ -1883,6 +2105,19 @@ $("sg-list").addEventListener("click", (e) => {
   if (x && S.bySym[x.symbol]) openCoin(x.symbol, x);
 });
 $("coin-back").addEventListener("click", closeCoin);
+$("coin-waves").addEventListener("click", () => { S.wCoin = S.coin; S.coinPushed = false; show("waves"); });
+$("w-search").addEventListener("input", wSuggest);
+$("w-search").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const b = $("w-sugg").querySelector("button[data-wsym]");
+  if (b) { e.preventDefault(); wPick(b.dataset.wsym); $("w-search").blur(); }
+});
+$("w-sugg").addEventListener("click", (e) => { const b = e.target.closest("button[data-wsym]"); if (b) wPick(b.dataset.wsym); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".wsearch")) $("w-sugg").hidden = true; });
+$("w-tf").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-tf]");
+  if (b && b.dataset.tf !== S.wTf) { S.wTf = b.dataset.tf; renderWaves(); }
+});
 $("setups-info").addEventListener("click", () => {
   const ex = $("setups-explain"), on = ex.hidden;
   ex.hidden = !on;
@@ -1918,10 +2153,6 @@ $("lang").addEventListener("click", () => {
   S.lang = S.lang === "ru" ? "en" : "ru";
   storeSet("lang", S.lang);
   render();
-});
-$("news-filter").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-f]");
-  if (b) { S.newsFilter = b.dataset.f; renderNews(); fitAll(); }
 });
 $("bubbles-btn").addEventListener("click", openBubbles);
 $("bubble-close").addEventListener("click", closeBubbles);
