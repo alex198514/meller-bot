@@ -658,3 +658,8 @@ body.coin-open main { padding-bottom: calc(var(--sa-b) + 24px); }
 .lvl-legend i.wzone { height: 10px; border: 0; border-radius: 3px; background: rgba(var(--gold-rgb), 0.3); }
 .lvl-legend i.wcancel { border-top: 2px dashed var(--red); }
 .wbtn { margin: 4px 0 14px; }
+
+/* Waves: six timeframes in one row; scrolls sideways (only the switch) if a narrow screen can't fit them */
+.seg.six { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.seg.six::-webkit-scrollbar { display: none; }
+.seg.six button { flex: 1 0 auto; min-width: 40px; padding: 10px 4px; font-size: 15px; }

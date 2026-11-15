@@ -15,8 +15,9 @@ const I18N = {
     sg_now: "Сейчас", sg_exit: "Выход", sg_empty: "Сейчас открытых сигналов нет. Сканер проверяет рынок каждый час в :35.",
     sg_latest: "Последние закрытые", sg_nomatch: "Нет сигналов по этому фильтру.", sg_more: "Показать ещё",
     slow_title: "Медленный бот (1D)", slow_sleep: "Спит: рынок медвежий, бот покупает только пробои вверх.",
+    nobot_k: "Медленный бот", nobot: "Эту монету медленный бот (1D) не торгует. Здесь интрадей-сигналы, график и волны.",
     tab_waves: "Волны", w_title: "Волны Эллиотта", w_search: "Монета: BTC, ETH, SOL…", w_btn: "🌊 Волны {coin}",
-    w_nomatch: "Нет такой монеты среди наших 75", w_imp_lg: "Импульс 1-5", w_zone_lg: "Зона возможного отскока 50–61.8%",
+    w_nomatch: "Нет такой монеты среди пар HashHedge", w_imp_lg: "Импульс 1-5", w_zone_lg: "Зона возможного отскока 50–61.8%",
     w_cancel_lg: "Отмена сценария", w_cancel: "отмена сценария", w_loading: "Загружаю свечи…",
     w_nodata: "Нет свечей Binance по этой монете на этом таймфрейме.", w_few: "Мало свингов для разметки.",
     w_up: "вверх", w_down: "вниз", w_below: "ниже", w_above: "выше",
@@ -101,8 +102,9 @@ const I18N = {
     sg_now: "Now", sg_exit: "Exit", sg_empty: "No open signals right now. The scanner checks the market every hour at :35.",
     sg_latest: "Latest closed", sg_nomatch: "No signals for this filter.", sg_more: "Show more",
     slow_title: "Slow bot (1D)", slow_sleep: "Asleep: the market is bearish, the bot only buys upside breakouts.",
+    nobot_k: "Slow bot", nobot: "The slow bot (1D) doesn't trade this coin. Here: intraday signals, the chart and waves.",
     tab_waves: "Waves", w_title: "Elliott waves", w_search: "Coin: BTC, ETH, SOL…", w_btn: "🌊 {coin} waves",
-    w_nomatch: "Not one of our 75 coins", w_imp_lg: "Impulse 1-5", w_zone_lg: "Possible bounce zone 50–61.8%",
+    w_nomatch: "Not one of the HashHedge pairs", w_imp_lg: "Impulse 1-5", w_zone_lg: "Possible bounce zone 50–61.8%",
     w_cancel_lg: "Scenario invalidation", w_cancel: "invalidation", w_loading: "Loading candles…",
     w_nodata: "No Binance candles for this coin on this timeframe.", w_few: "Too few swings to label.",
     w_up: "up", w_down: "down", w_below: "below", w_above: "above",
@@ -225,6 +227,10 @@ function badge(sym, coin, size = "sm") {
 }
 
 const TOP_N = 10;
+/** Traded by the slow bot (strategy B)? The other HashHedge coins are scanner-only (intraday signals, waves). */
+const isBot = (sym) => !!S.bySym[sym] && S.bySym[sym].bot !== false;
+/** The Overview's heatmap and bubbles keep the bot's coins. */
+const ovSyms = () => S.data.symbols.filter((s) => s.bot !== false);
 
 /* ---------- theme: light (default) / dark. CSS has the tokens; this palette is for what JS draws (charts, canvas, SVG). */
 const PALETTES = {
@@ -521,7 +527,7 @@ function renderMarket() {
     .filter((s) => !q || s.coin.includes(q) || s.symbol.includes(q))
     .map((s) => ({ s, d: dist(s.symbol) }))
     .sort((a, b) => a.d - b.d);
-  const rows = q || S.showAll ? all : all.slice(0, TOP_N);       // a search always shows every match
+  const rows = q || S.showAll ? all : all.filter((x) => isBot(x.s.symbol)).slice(0, TOP_N);   // top list: the bot's coins       // a search always shows every match
   const more = $("more");
   more.hidden = !!q || all.length <= TOP_N;
   more.textContent = S.showAll ? t("show_top") : t("show_all", { n: all.length });
@@ -730,7 +736,7 @@ function renderHeat() {
   if (!w) return;
   const h = Math.round(Math.min(560, Math.max(340, w * 1.25)));
   box.style.height = h + "px";
-  const syms = S.data.symbols.map((s) => s.symbol);
+  const syms = ovSyms().map((s) => s.symbol);
   const vols = syms.map((s) => (S.live[s] && S.live[s].qv > 0 ? S.live[s].qv : 0));
   const known = vols.filter((v) => v > 0).sort((a, b) => a - b);
   const med = known.length ? known[known.length >> 1] : 1;
@@ -829,12 +835,12 @@ async function loadPeriod(p) {
   const [iv, lim] = p === "1h" ? ["1m", 61] : ["1h", 169];
   const out = {};
   if (p === "7d") {                                            // coins without Binance spot: daily closes from data.json
-    for (const s of S.data.symbols) {
+    for (const s of ovSyms()) {
       const c = s.closes || [];
       if (c.length >= 7) out[s.symbol] = c[c.length - 7];
     }
   }
-  const queue = S.liveOk ? S.data.symbols.map((s) => s.symbol).filter(hasSpot) : [];
+  const queue = S.liveOk ? ovSyms().map((s) => s.symbol).filter(hasSpot) : [];
   const worker = async () => {
     while (queue.length) {
       const sym = queue.shift();
@@ -869,7 +875,7 @@ function sizeBubbles() {
 
 /** Radius ∝ √(24h quote volume), scaled so the bubbles cover about half the box, within a min and max size. */
 function targetRadii() {
-  const syms = S.data.symbols.map((s) => s.symbol);
+  const syms = ovSyms().map((s) => s.symbol);
   const vols = syms.map((s) => (S.live[s] && S.live[s].qv > 0 ? S.live[s].qv : 0));
   const known = vols.filter((v) => v > 0).sort((a, b) => a - b);
   const med = known.length ? known[known.length >> 1] : 1;
@@ -1237,6 +1243,14 @@ function planZone(sym, L) {
 }
 
 function renderPlan(sym, L) {
+  if (!isBot(sym)) {                          // scanner-only coin: no bot plan; the signal's plan if one is open
+    const x = activeSetup(sym);
+    $("ladder").hidden = $("tps").hidden = $("sig-status").hidden = true;
+    $("noplan").hidden = !!x;
+    $("entered-btn").hidden = !x;
+    $("noplan").innerHTML = `<span class="k">${esc(t("nobot_k"))}</span>${esc(t("nobot"))}`;
+    return;
+  }
   const z = planZone(sym, L), s = S.bySym[sym];
   $("noplan").hidden = z !== "none";
   $("ladder").hidden = $("tps").hidden = $("entered-btn").hidden = z === "none";
@@ -1328,7 +1342,7 @@ function renderHero(sym, L) {
     <div class="hero-top">${badge(sym, s.coin, "lg")}
       <label class="picker"><span class="cname">${esc(s.coin)}</span><span class="chev">▾</span>
         <select id="coin-select" aria-label="Coin">${opts}</select></label>
-      <span class="schip ${L.open ? "long" : "wait"}">${esc(L.open ? t("chip_long") : t("chip_wait"))}</span></div>
+      ${isBot(sym) ? `<span class="schip ${L.open ? "long" : "wait"}">${esc(L.open ? t("chip_long") : t("chip_wait"))}</span>` : ""}</div>
     <div class="hero-price">${NL("px", sym, fmt(price(sym)), "big")}${ch == null ? "" : NL("chg", sym, sgn(ch) + "%", "chg " + cls(ch))}</div>`;
   $("coin-select").addEventListener("change", (e) => { S.coin = e.target.value; renderSignal(); });
 }
@@ -1400,9 +1414,10 @@ async function renderSignal() {
   renderSigNews(sym);
   renderTfs(sym);
   renderSetupBanner(sym);
-  $("lvl-legend").innerHTML = `<span><i></i>${esc(t("lv20"))}</span><span><i class="bot"></i>${esc(t("bot_level"))}</span>` +
-    (S.tf === "1d" ? `<span><i class="proj"></i>${esc(t("proj_level"))}</span>` : "");
-  $("lvl-proj").textContent = projText(sym);
+  const bot = isBot(sym);
+  $("lvl-legend").innerHTML = `<span><i></i>${esc(t("lv20"))}</span>` + (bot ? `<span><i class="bot"></i>${esc(t("bot_level"))}</span>` : "") +
+    (bot && S.tf === "1d" ? `<span><i class="proj"></i>${esc(t("proj_level"))}</span>` : "");
+  $("lvl-proj").textContent = bot ? projText(sym) : "";
   fitAll();
   const tf = S.tf;
   if (tf === "1d") await loadKlines(sym, "1d");
@@ -1424,11 +1439,11 @@ async function renderSignal() {
   series.setData(rows);
   S.series = series;
   const line = (p, color, title, style = 2) => series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title });
-  line(s.level, PAL().blue, t("bot_level"), 0);
+  if (isBot(sym)) line(s.level, PAL().blue, t("bot_level"), 0);
   const lv = (title) => series.createPriceLine({ price: s.level, color: PAL().gold, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title });
   S.lv = { sym, tf, rows, hi: null, lo: null, hiLine: lv(""), loLine: lv("") };
   updateLv20();
-  if (tf === "1d" && rows.length) {                                       // projected daily level, right of the last candle
+  if (tf === "1d" && rows.length && isBot(sym)) {                         // projected daily level, right of the last candle
     const last = rows[rows.length - 1].time;
     const tm = (d) => (typeof last === "number" ? Date.parse(d + "T00:00:00Z") / 1000 : d);
     const pts = [{ time: last, value: s.level }];
@@ -1885,7 +1900,8 @@ function wText(c, close) {
 
 async function wLoad(sym, tf) {
   const key = sym + "|" + tf, c = S.wk[key];
-  if (c && Date.now() - c.at < 5 * 60 * 1000) return c.rows;
+  const ttl = tf === "5m" || tf === "15m" ? 60 * 1000 : 5 * 60 * 1000;   // short timeframes: 1 minute
+  if (c && Date.now() - c.at < ttl) return c.rows;
   const hosts = [...new Set([S.host, "https://api.binance.com", "https://data-api.binance.vision"].filter(Boolean))];
   for (const host of hosts) {
     try {
@@ -1931,24 +1947,27 @@ function renderWaves() {
   $("w-search").placeholder = t("w_search");
   document.querySelectorAll("#w-tf button").forEach((b) => b.classList.toggle("on", b.dataset.tf === tf));
   $("w-head").innerHTML = `${badge(sym, s.coin)}<span class="cn">${esc(s.coin)}</span>
-    <span class="tfb">${tf.toUpperCase()}</span>`;
+    <span class="tfb">${tf.endsWith("m") ? tf : tf.toUpperCase()}</span>`;
   $("w-legend").innerHTML = `<span><i class="wimp"></i>${esc(t("w_imp_lg"))}</span><span><i class="wzone"></i>${esc(t("w_zone_lg"))}</span>
     <span><i class="wcancel"></i>${esc(t("w_cancel_lg"))}</span>`;
   $("w-note").textContent = t("w_note");
   const key = [sym, tf, S.theme, S.lang].join("|");
-  if (key !== S.wKey || !S.wChart) drawWaves(sym, tf, key);
+  if (key !== S.wKey || (!S.wChart && S.wBusy !== key)) drawWaves(sym, tf, key);   // not twice while loading
 }
 
 async function drawWaves(sym, tf, key) {
   S.wKey = key;
+  S.wBusy = key;
   if (S.wChart) { S.wChart.remove(); S.wChart = null; }
   $("w-text").innerHTML = `<span class="muted">${esc(t("w_loading"))}</span>`;
   const rows = await wLoad(sym, tf);
+  if (S.wBusy === key) S.wBusy = null;
   if (S.wKey !== key || S.tab !== "waves" || typeof LightweightCharts === "undefined") return;
   if (S.wChart) { S.wChart.remove(); S.wChart = null; }
   if (!rows.length) { $("w-text").textContent = t("w_nodata"); return; }
   const P = PAL(), pf = { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 };
-  const ch = LightweightCharts.createChart($("w-chart"), { ...CHART_THEME(), crosshair: { mode: 0 } });
+  const th = CHART_THEME();
+  const ch = LightweightCharts.createChart($("w-chart"), { ...th, crosshair: { mode: 0 }, timeScale: { ...th.timeScale, timeVisible: tf !== "1d", minBarSpacing: 0.1 } });
   S.wChart = ch;
   const series = ch.addCandlestickSeries({ upColor: P.up, downColor: P.down, borderVisible: false, wickUpColor: P.up, wickDownColor: P.down, priceFormat: pf });
   series.setData(rows);
@@ -1970,7 +1989,8 @@ async function drawWaves(sym, tf, key) {
   }
   series.setMarkers(c.labels.map((x) => ({ time: at(x), position: x.type === "H" ? "aboveBar" : "belowBar", shape: "circle", size: 0.6,
     color: x.imp ? P.blue : P.muted, text: x.txt })));
-  ch.timeScale().fitContent();
+  // empty space right of the last candle: the level titles sit there instead of over the newest waves
+  ch.timeScale().setVisibleLogicalRange({ from: 0, to: rows.length - 1 + Math.round(rows.length * 0.45) });
   $("w-text").innerHTML = wText(c, rows[rows.length - 1].close).map((l) => `<span>${esc(l)}</span>`).join("");
 }
 
@@ -2052,7 +2072,7 @@ async function init() {
     return;
   }
   S.coin = (S.data.positions[0] || {}).symbol ||
-    S.data.symbols.slice().sort((a, b) => a.dist_pct - b.dist_pct)[0].symbol;
+    ovSyms().slice().sort((a, b) => a.dist_pct - b.dist_pct)[0].symbol;
   await Promise.all([loadNews(), loadFng()]);
   show(hashTab());
   await loadLive();
