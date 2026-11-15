@@ -38,6 +38,15 @@ const I18N = {
     br_since: "Старт", br_trades: "Закрыто сделок", br_win: "Прибыльных", br_r: "Итого R", br_bal: "Баланс", br_dd: "Просадка от пика",
     br_none: "Закрытых сделок пока нет. Бот торгует с {d} и ждёт первый пробой.",
     rs_stop: "стоп", rs_be: "стоп в безубытке", rs_trail: "трейлинг", br_now: "сейчас",
+    setups_title: "Сетапы", setups_explain: "Сетап: закрытие 1H или 4H свечи выше максимума (LONG) или ниже минимума (SHORT) " +
+      "предыдущих 20 свечей, объём свечи не меньше 1.5× среднего, свеча меньше 2.5 ATR. Стоп 1.5 ATR, TP1 +1.5R (закрыть половину, " +
+      "стоп в безубыток), TP2 +3R. Размер на риск $50 от $10 000. Через 48 свечей сетап закрывается. Это не проверенный сигнал " +
+      "стратегии: результаты считаются по 5-минутным свечам с комиссией 0.06% за круг.",
+    setups_none: "Открытых сетапов нет. Сканер проверяет 1H и 4H свечи каждый час.", setups_more: "Показать все {n}", setups_less: "Свернуть",
+    setups_line: "Сетапов: {n} · закрыто {c} · прибыльных {w} · средний {a} · итого {t}", setups_empty: "Сетапов пока не было.",
+    setups_cell: "{n} · {w} · ср. {a}", setups_not: "Сетап, не проверенный сигнал. Решение твоё.", setup_lbl: "сетап",
+    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "истёк", su_tp1: "TP1 взят",
+    su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
     f_bad: "Проверьте числа: стоп должен быть ниже входа, размер больше нуля.", my_none: "Открытых сделок нет. Нажмите «Я вошёл» на вкладке Сигнал.",
@@ -89,6 +98,15 @@ const I18N = {
     br_since: "Start", br_trades: "Closed trades", br_win: "Win rate", br_r: "Total R", br_bal: "Balance", br_dd: "Drawdown",
     br_none: "No closed trades yet. The bot has been trading since {d} and is waiting for its first breakout.",
     rs_stop: "stop", rs_be: "breakeven stop", rs_trail: "trailing", br_now: "now",
+    setups_title: "Setups", setups_explain: "A setup: a 1H or 4H candle closes above the high (LONG) or below the low (SHORT) " +
+      "of the previous 20 candles, with volume at least 1.5× the average and a range under 2.5 ATR. Stop 1.5 ATR, TP1 +1.5R (close half, " +
+      "stop to breakeven), TP2 +3R. Sized for $50 risk on $10,000. A setup closes after 48 candles. Not a tested strategy signal: " +
+      "results are checked on 5-minute candles after a 0.06% round-trip fee.",
+    setups_none: "No open setups. The scanner checks 1H and 4H candles every hour.", setups_more: "Show all {n}", setups_less: "Show less",
+    setups_line: "Setups: {n} · closed {c} · win rate {w} · average {a} · total {t}", setups_empty: "No setups yet.",
+    setups_cell: "{n} · {w} · avg {a}", setups_not: "A setup, not a tested signal. Your decision.", setup_lbl: "setup",
+    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "expired", su_tp1: "TP1 taken",
+    su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
     f_bad: "Check the numbers: the stop must be below the entry and the size above zero.", my_none: "No open trades. Tap \u201cI entered\u201d on the Signal tab.",
@@ -113,6 +131,7 @@ const S = {
   theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
   news: null, newsFilter: "all", tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
+  setupView: null, setupsAll: false,
 };
 
 function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -215,7 +234,7 @@ async function loadLive() {
       const r = await fetch(host + "/api/v3/ticker/24hr" + q);
       if (!r.ok) continue;
       const rows = await r.json();
-      S.live = Object.fromEntries(rows.map((x) => [x.symbol, { price: +x.lastPrice, change: +x.priceChangePercent, qv: +x.quoteVolume }]));
+      S.live = Object.fromEntries(rows.map((x) => [x.symbol, { price: +x.lastPrice, change: +x.priceChangePercent, qv: +x.quoteVolume, v: +x.volume }]));
       S.liveOk = true;
       S.host = host;
       return;
@@ -307,7 +326,7 @@ function onTick(d) {
   const sym = d.s, p = +d.c, o = +d.o, old = S.live[sym];
   if (!old || !(p > 0)) return;
   if (p !== old.price) S.flash[sym] = p > old.price ? "up" : "down";
-  S.live[sym] = { price: p, change: o > 0 ? 100 * (p / o - 1) : old.change, qv: +d.q > 0 ? +d.q : old.qv };
+  S.live[sym] = { price: p, change: o > 0 ? 100 * (p / o - 1) : old.change, qv: +d.q > 0 ? +d.q : old.qv, v: +d.v > 0 ? +d.v : old.v };
   S.dirty.add(sym);
 }
 
@@ -346,6 +365,14 @@ function applyLive() {
     });
     document.querySelectorAll(`[data-dist="${sym}"]`).forEach((el) => {
       el.innerHTML = distHtml(sym);
+    });
+    document.querySelectorAll(`[data-srs="${sym}"]`).forEach((el) => {
+      const x = setupById(el.dataset.sid);
+      if (!x) return;
+      const r = setupR(x, setupPx(x));
+      el.textContent = sgn(r) + "R";
+      el.classList.toggle("up", r >= 0);
+      el.classList.toggle("down", r < 0);
     });
   }
   const now = Date.now();
@@ -430,6 +457,7 @@ function sparkline(sym) {
 const barClass = (d) => (d <= S.data.rules.near_pct ? "near" : d <= 10 ? "mid" : "");
 
 function renderMarket() {
+  renderSetups();
   $("search").placeholder = t("search");
   $("near-title").textContent = t("near_title");
   $("near-explain").textContent = t("near_explain");
@@ -991,9 +1019,85 @@ function levelDrop(sym) {
 }
 
 function distHtml(sym) {
-  const d = dist(sym), st = levelStatus(sym), bc = barClass(d), drop = levelDrop(sym);
+  const d = dist(sym), st = levelStatus(sym), bc = barClass(d), drop = levelDrop(sym), rv = rvol(sym);
   return `<div class="lbl"><span class="stc ${st}">${esc(t("st_" + st))}</span>${d > 0 ? `<small>${N(d.toFixed(1) + "%")}</small>` : ""}</div>
-    <div class="bar ${bc}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div>${drop ? `<div class="ldrop">${esc(drop)}</div>` : ""}`;
+    <div class="bar ${bc}"><i style="width:${(100 * fill(d)).toFixed(1)}%"></i></div>${drop ? `<div class="ldrop">${esc(drop)}</div>` : ""}` +
+    (rv == null ? "" : `<div class="rvol${rv > 1.5 ? " hi" : ""}">${esc(t("rvol", { x: rv.toFixed(1) }))}</div>`);
+}
+
+/** Relative volume: the last 24 hours (live Binance ticker, else the watch run's hourly candles) vs the 20-day average. */
+function rvol(sym) {
+  const s = S.bySym[sym], l = S.live[sym];
+  const v = l && l.v > 0 ? l.v : s.vol24;
+  return v > 0 && s.vol20 > 0 ? v / s.vol20 : null;
+}
+
+/* ---------- intraday setups (1H / 4H, labelled, not tested signals): written by paper.py's watch run ---------- */
+
+const SU = () => (S.data && S.data.setups) || { open: [], closed: [], stats: null, rules: { tp_r: [1.5, 3], fee_rt: 0.0006 } };
+const setupById = (id) => SU().open.find((x) => x.id === id) || SU().closed.find((x) => x.id === id) || null;
+const setupPx = (x) => (S.live[x.symbol] ? S.live[x.symbol].price : x.last || x.entry);
+const tfLabel = (tf) => tf.toUpperCase();
+
+/** R of a setup at price `px` (open: what it would be closed at now), after the round-trip fee; capped at the stop / TP2. */
+function setupR(x, px) {
+  const sg = x.side === "long" ? 1 : -1, risk = Math.abs(x.entry - x.stop), R = SU().rules;
+  if (x.status !== "open" && x.r != null) return x.r;
+  let mv = Math.min(R.tp_r[1], (sg * (px - x.entry)) / risk);
+  mv = Math.max(x.tp1_hit ? 0 : -1, mv);
+  return (x.tp1_hit ? 0.5 * R.tp_r[0] + 0.5 * mv : mv) - (R.fee_rt * x.entry) / risk;
+}
+
+function setupStatus(x) {
+  if (x.status === "open") return x.tp1_hit ? t("su_tp1") : t("su_open");
+  return t("su_" + x.status);
+}
+
+function renderSetups() {
+  $("setups-title").textContent = t("setups_title");
+  $("setups-explain").textContent = t("setups_explain");
+  const su = SU(), open = su.open.slice().sort((a, b) => (a.time < b.time ? 1 : -1));
+  const shown = S.setupsAll ? open : open.slice(0, 5);
+  const list = open.length ? `<ul class="slist">${shown.map((x) => {
+      const r = setupR(x, setupPx(x));
+      return `<li class="card btrade sup" data-sid="${esc(x.id)}">${badge(x.symbol, x.coin)}
+        <div class="what"><div class="btop"><span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>${x.tp1_hit ? `<span class="stag">TP1</span>` : ""}</div>
+          <div class="when">${N(fmt(x.entry))} · ${esc(t("stop").toLowerCase())} ${N(fmt(x.stop))} · ${esc(ago(x.time))}</div></div>
+        <div class="res"><span class="num r ${cls(r)}" data-srs="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgn(r)}R</span></div></li>`;
+    }).join("")}</ul>` + (open.length > 5 ? `<button class="more smore" id="setups-more" type="button">${esc(S.setupsAll ? t("setups_less") : t("setups_more", { n: open.length }))}</button>` : "")
+    : `<div class="card empty small">${esc(t("setups_none"))}</div>`;
+  const st = su.stats;
+  const pct = (w) => (w == null ? "—" : Math.round(w) + "%");
+  const rr = (v, d = 2) => (v == null ? "—" : sgn(v, d) + "R");
+  let stats = "";
+  if (st && st.all.n) {
+    const cell = (k, label) => {
+      const c = st[k];
+      return `<div class="scell"><span class="k">${label}</span><span class="v num ${c.closed ? cls(c.total_r) : ""}">${rr(c.closed ? c.total_r : null, 1)}</span>
+        <small>${esc(t("setups_cell", { n: c.n, w: pct(c.win), a: c.avg_r == null ? "—" : sgn(c.avg_r) }))}</small></div>`;
+    };
+    stats = `<div class="card sstats"><div class="sline">${esc(t("setups_line", { n: st.all.n, c: st.all.closed, w: pct(st.all.win),
+        a: rr(st.all.avg_r), t: rr(st.all.closed ? st.all.total_r : null, 1) }))}</div>
+      <div class="sgrid">${cell("1h", "1H")}${cell("4h", "4H")}${cell("long", "LONG")}${cell("short", "SHORT")}</div>
+      <div class="snote">${esc(t("setups_not"))}</div></div>`;
+  } else stats = `<div class="snote">${esc(t("setups_empty"))} ${esc(t("setups_not"))}</div>`;
+  $("setups").innerHTML = list + stats;
+}
+
+/** The setup opened from the Market tab, above the chart (entry, stop, TPs, live R); the chart draws its lines. */
+function renderSetupBanner(sym) {
+  const x = S.setupView && S.setupView.symbol === sym ? setupById(S.setupView.id) || S.setupView : null;
+  const el = $("setup-banner");
+  el.hidden = !x;
+  if (!x) return;
+  const r = setupR(x, setupPx(x));
+  const time = `${x.time.slice(8, 10)}.${x.time.slice(5, 7)} ${x.time.slice(11, 16)} UTC`;
+  el.innerHTML = `<div class="shead"><span class="sside ${x.side}">${esc(t("setup_lbl").toUpperCase())} ${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>
+      <button class="sx" id="setup-x" type="button" aria-label="${esc(t("close"))}">✕</button></div>
+    <div class="when">${esc(time)} · ${esc(setupStatus(x))}</div>
+    <div class="slv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span><span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}</span>
+      <span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}</span><span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}</span></div>
+    <div class="snow ${cls(r)}">${esc(t("su_now", { r: sgn(r) + "R" }))}</div><div class="snote">${esc(t("setups_not"))}</div>`;
 }
 
 /** The plan on the Signal tab: none (> 10% below the level), dim (3-10%: greyed, "plan if it breaks out"), full. */
@@ -1159,6 +1263,7 @@ async function renderSignal() {
   renderPlan(sym, L);
   renderSigNews(sym);
   renderTfs(sym);
+  renderSetupBanner(sym);
   $("lvl-legend").innerHTML = `<span><i></i>${esc(t("lv20"))}</span><span><i class="bot"></i>${esc(t("bot_level"))}</span>` +
     (S.tf === "1d" ? `<span><i class="proj"></i>${esc(t("proj_level"))}</span>` : "");
   $("lvl-proj").textContent = projText(sym);
@@ -1196,6 +1301,18 @@ async function renderSignal() {
       const proj = S.chart.addLineSeries({ color: PAL().blue, lineWidth: 2, lineStyle: 2, lineType: 1, priceLineVisible: false,
         lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: { type: "custom", formatter: (p) => fmtNum(p), minMove: 1e-9 } });
       proj.setData(pts);
+    }
+  }
+  const su = S.setupView && S.setupView.symbol === sym ? setupById(S.setupView.id) || S.setupView : null;
+  if (su) {                                                                // the setup opened from the Market tab
+    line(su.entry, PAL().gold, t("setup_lbl"));
+    line(su.stop, PAL().down, t("stop"));
+    line(su.tp[0], PAL().up, "TP1");
+    line(su.tp[1], PAL().up, "TP2");
+    if (tf === su.tf && rows.length && typeof rows[0].time === "number") {
+      const at = Date.parse(su.time) / 1000 - TF_SEC[su.tf];
+      if (rows.some((r) => r.time === at)) series.setMarkers([{ time: at, position: su.side === "long" ? "belowBar" : "aboveBar",
+        color: PAL().gold, shape: su.side === "long" ? "arrowUp" : "arrowDown", text: t("setup_lbl") }]);
     }
   }
   if (L.open) {
@@ -1566,7 +1683,12 @@ function render() {
   fitAll();
 }
 
-function openCoin(sym) { S.coin = sym; show("signal"); }
+function openCoin(sym, setup = null) {
+  S.coin = sym;
+  S.setupView = setup;
+  if (setup) S.tf = hasSpot(sym) ? setup.tf : "1d";
+  show("signal");
+}
 
 /** Deep links: #signal/BTCUSDT, #overview, ... Sets the coin; returns the tab named in the hash (or the current one).
  *  The old #challenge link (the tab is gone) opens the Overview. */
@@ -1621,6 +1743,21 @@ $("tabbar").addEventListener("click", (e) => {
 function track(name) {
   try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) {}
 }
+$("setups").addEventListener("click", (e) => {
+  if (e.target.closest("#setups-more")) { S.setupsAll = !S.setupsAll; renderSetups(); fitAll(); return; }
+  const card = e.target.closest(".sup[data-sid]"), x = card && setupById(card.dataset.sid);
+  if (x && S.bySym[x.symbol]) openCoin(x.symbol, x);
+});
+$("setups-info").addEventListener("click", () => {
+  const ex = $("setups-explain"), on = ex.hidden;
+  ex.hidden = !on;
+  $("setups-info").setAttribute("aria-expanded", String(on));
+});
+$("setup-banner").addEventListener("click", (e) => {
+  if (!e.target.closest("#setup-x")) return;
+  S.setupView = null;
+  renderSignal();
+});
 $("coins").addEventListener("click", (e) => {
   const row = e.target.closest(".row");
   if (row) openCoin(row.dataset.sym);

@@ -520,3 +520,35 @@ html.lt360 .bstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .btrade .why { white-space: normal; overflow: visible; }
 .btrade .when { white-space: normal; overflow: visible; line-height: 1.35; }
 .bstat .v { white-space: normal; }
+
+/* ---------- intraday setups (Market tab) and relative volume ---------- */
+#setups { margin-bottom: 16px; }
+.slist { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.sup { cursor: pointer; transition: transform .08s ease, background-color .12s ease; }
+.sup:active { transform: scale(0.985); background: var(--card-2); }
+.sside { font-size: 12px; font-weight: 800; padding: 2px 7px; border-radius: 6px; white-space: nowrap; flex: 0 0 auto; }
+.sside.long { color: var(--green); background: rgba(var(--green-rgb), 0.14); }
+.sside.short { color: var(--red); background: rgba(var(--red-rgb), 0.14); }
+.stag { font-size: 12px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.smore { display: block; width: 100%; margin: 0 0 10px; }
+.sstats { padding: 12px 14px; }
+.sline { font-size: 14px; font-weight: 700; line-height: 1.45; }
+.sline .muted { color: var(--muted); font-weight: 600; }
+.sgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.scell { background: var(--card-2); border-radius: 12px; padding: 7px 9px; min-width: 0; }
+.scell .k { display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+.scell .v { display: block; font-size: 16px; font-weight: 800; white-space: nowrap; }
+.scell small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.snote { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.sbanner { padding: 12px 14px; margin-bottom: 12px; border-left: 4px solid var(--gold); }
+.sbanner .shead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sbanner .shead b { font-size: 15px; white-space: nowrap; }
+.sbanner .when { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.sbanner .sx { margin-left: auto; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line-2);
+  background: var(--card-2); color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.sbanner .slv { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; margin-top: 8px; }
+.sbanner .slv span { white-space: nowrap; }
+.sbanner .slv .k { color: var(--muted); font-weight: 700; margin-right: 4px; }
+.sbanner .snow { font-size: 14px; font-weight: 800; margin-top: 6px; }
+.rvol { font-size: 12px; font-weight: 800; text-align: right; margin-top: 5px; white-space: nowrap; color: var(--muted); }
+.rvol.hi { color: var(--green); }
