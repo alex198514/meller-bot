@@ -3,6 +3,14 @@
 
 const I18N = {
   ru: {
+    tab_signals: "Сигналы", back: "Назад",
+    sg_since: "С {d}", sg_7d: "За 7 дней", sg_n: "Сигналов", sg_closed: "Закрыто", sg_win: "Прибыльных", sg_avg: "Средний R",
+    sg_tot: "Итого R", sg_few: "Мало данных, статистика копится.", f_all: "Все", f_open: "В работе", f_closed: "Закрытые",
+    ss_open: "в работе", ss_tp1: "TP1 взят, стоп в безубыток", ss_tp1_be: "TP1 взят, закрыт в безубытке", ss_tp2: "TP2 взят",
+    ss_stop: "стоп", ss_expired: "закрыт по времени", sg_size: "Размер {n} USDT · маржа 5x {m} USDT (риск $50)",
+    sg_now: "Сейчас", sg_exit: "Выход", sg_empty: "Сейчас открытых сигналов нет. Сканер проверяет рынок каждый час в :35.",
+    sg_latest: "Последние закрытые", sg_nomatch: "Нет сигналов по этому фильтру.", sg_more: "Показать ещё",
+    slow_title: "Медленный бот (1D)", slow_sleep: "Спит: рынок медвежий, бот покупает только пробои вверх.",
     tab_market: "Рынок", tab_signal: "Сигнал", tab_positions: "Позиции", tab_overview: "Обзор", tab_news: "Новости",
     news_all: "Все", news_mine: "Мои монеты", news_none: "Новостей пока нет.", news_coin: "Новости {coin}",
     news_coin_none: "Новостей за 7 дней нет", news_meta: "{n} заголовков за 7 дней · CoinDesk, Cointelegraph, Decrypt, Binance",
@@ -66,6 +74,14 @@ const I18N = {
     loading: "загрузка…", load_fail: "Не удалось загрузить data.json",
   },
   en: {
+    tab_signals: "Signals", back: "Back",
+    sg_since: "Since {d}", sg_7d: "Last 7 days", sg_n: "Signals", sg_closed: "Closed", sg_win: "Win rate", sg_avg: "Avg R",
+    sg_tot: "Total R", sg_few: "Not enough data yet, stats are still building.", f_all: "All", f_open: "Open", f_closed: "Closed",
+    ss_open: "open", ss_tp1: "TP1 hit, stop at breakeven", ss_tp1_be: "TP1 hit, closed at breakeven", ss_tp2: "TP2 hit",
+    ss_stop: "stopped out", ss_expired: "closed on time", sg_size: "Size {n} USDT · margin 5x {m} USDT ($50 risk)",
+    sg_now: "Now", sg_exit: "Exit", sg_empty: "No open signals right now. The scanner checks the market every hour at :35.",
+    sg_latest: "Latest closed", sg_nomatch: "No signals for this filter.", sg_more: "Show more",
+    slow_title: "Slow bot (1D)", slow_sleep: "Asleep: the market is bearish, the bot only buys upside breakouts.",
     tab_market: "Market", tab_signal: "Signal", tab_positions: "Positions", tab_overview: "Overview", tab_news: "News",
     news_all: "All", news_mine: "My coins", news_none: "No news yet.", news_coin: "{coin} news",
     news_coin_none: "No news in 7 days", news_meta: "{n} headlines in 7 days · CoinDesk, Cointelegraph, Decrypt, Binance",
@@ -135,7 +151,7 @@ const S = {
   lang: (new URLSearchParams(location.search).get("lang") || storeGet("lang") ||
          (navigator.language || "ru").slice(0, 2)) === "ru" ? "ru" : "en",
   theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
-  tab: "market", coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
+  tab: "signals", prevTab: "signals", coinPushed: false, sgFilter: "all", sgShown: 20, coin: null, query: "", klines: {}, chart: null, curveChart: null, showAll: false,
   news: null, newsFilter: "all", tf: "1d", series: null, dirty: new Set(), flash: {}, lastSlow: 0,
   setupView: null, setupsAll: false,
 };
@@ -372,6 +388,10 @@ function applyLive() {
     document.querySelectorAll(`[data-dist="${sym}"]`).forEach((el) => {
       el.innerHTML = distHtml(sym);
     });
+    document.querySelectorAll(`[data-sgsym="${sym}"]`).forEach((el) => {
+      const x = setupById(el.dataset.sid);
+      if (x) el.innerHTML = sgLiveHtml(x);
+    });
     document.querySelectorAll(`[data-srs="${sym}"]`).forEach((el) => {
       const x = setupById(el.dataset.sid);
       if (!x) return;
@@ -463,7 +483,6 @@ function sparkline(sym) {
 const barClass = (d) => (d <= S.data.rules.near_pct ? "near" : d <= 10 ? "mid" : "");
 
 function renderMarket() {
-  renderSetups();
   $("search").placeholder = t("search");
   $("near-title").textContent = t("near_title");
   $("near-explain").textContent = t("near_explain");
@@ -1067,46 +1086,85 @@ function setupStatus(x) {
   return t("su_" + x.status);
 }
 
-function renderSetups() {
-  $("setups-title").textContent = t("setups_title");
-  $("setups-explain").textContent = t("setups_explain");
-  const su = SU(), open = su.open.slice().sort((a, b) => (a.time < b.time ? 1 : -1));
-  const shown = S.setupsAll ? open : open.slice(0, 5);
-  const list = open.length ? `<ul class="slist">${shown.map((x) => {
-      const r = setupR(x, setupPx(x));
-      return `<li class="card btrade sup" data-sid="${esc(x.id)}">${badge(x.symbol, x.coin)}
-        <div class="what"><div class="btop"><span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>${x.tp1_hit ? `<span class="stag">TP1</span>` : ""}</div>
-          <div class="when">${N(fmt(x.entry))} · ${esc(t("stop").toLowerCase())} ${N(fmt(x.stop))}</div>
-          <div class="when sleft">${esc(setupLeft(x))}</div></div>
-        <div class="res"><span class="num r ${cls(r)}" data-srs="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgn(r)}R</span></div></li>`;
-    }).join("")}</ul>` + (open.length > 5 ? `<button class="more smore" id="setups-more" type="button">${esc(S.setupsAll ? t("setups_less") : t("setups_more", { n: open.length }))}</button>` : "")
-    : `<div class="card empty small">${esc(t("setups_none"))}</div>`;
-  const st = su.stats;
-  const pct = (w) => (w == null ? "—" : Math.round(w) + "%");
-  const rr = (v, d = 2) => (v == null ? "—" : sgn(v, d) + "R");
-  const since = su.live_since ? dayLabel(su.live_since, true) : "—";
-  const dr = su.dry_run && su.dry_run.stats && su.dry_run.stats.all;
-  const dry = dr ? `<div class="snote sdry">${esc(t("setups_dry", { a: dayLabel(su.dry_run.from), b: dayLabel(su.dry_run.to), n: dr.n,
-      w: pct(dr.win), r: rr(dr.avg_r), t: rr(dr.total_r, 1) }))}</div>` : "";
-  let stats = "";
-  if (st && st.all.n) {
-    const cell = (k, label) => {
-      const c = st[k];
-      return `<div class="scell"><span class="k">${label}</span><span class="v num ${c.closed ? cls(c.total_r) : ""}">${rr(c.closed ? c.total_r : null, 1)}</span>
-        <small>${esc(t("setups_cell", { n: c.n, w: pct(c.win), a: c.avg_r == null ? "—" : sgn(c.avg_r) }))}</small></div>`;
-    };
-    stats = `<div class="card sstats"><div class="sline">${esc(t("setups_line", { d: since, n: st.all.n, c: st.all.closed, w: pct(st.all.win),
-        a: rr(st.all.avg_r), t: rr(st.all.closed ? st.all.total_r : null, 1) }))}</div>
-      <div class="sgrid">${cell("1h", "1H")}${cell("4h", "4H")}${cell("long", "LONG")}${cell("short", "SHORT")}</div>
-      ${dry}<div class="snote">${esc(t("setups_not"))}</div></div>`;
-  } else stats = `<div class="card sstats"><div class="sline">${esc(t("setups_empty", { d: since }))}</div>${dry}
-      <div class="snote">${esc(t("setups_not"))}</div></div>`;
-  $("setups").innerHTML = list + stats;
+const sgTime = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)} ${iso.slice(11, 16)} UTC`;
+const sgDir = (x) => (x.side === "long" ? 1 : -1);
+const sgRisk = (x) => Math.abs(x.entry - x.stop);
+/** Status chip key: open, tp1 (open, TP1 hit), tp1_be, tp2, stop, expired. */
+const sgKey = (x) => (x.status === "open" ? (x.tp1_hit ? "tp1" : "open") : x.status);
+
+/** The live part of a signal card: price (or exit), result in R and %, the stop .. TP2 bar. */
+function sgLiveHtml(x) {
+  const open = x.status === "open", px = open ? setupPx(x) : x.exit != null ? x.exit : x.last;
+  const r = setupR(x, px), pct = (100 * r * sgRisk(x)) / x.entry;
+  const mv = (sgDir(x) * (px - x.entry)) / sgRisk(x);
+  const at = Math.max(0, Math.min(1, (mv + 1) / (1 + SU().rules.tp_r[1])));
+  const tp1 = (1 + SU().rules.tp_r[0]) / (1 + SU().rules.tp_r[1]), e = 1 / (1 + SU().rules.tp_r[1]);
+  return `<div class="ln1"><span class="k">${esc(open ? t("sg_now") : t("sg_exit"))}</span>${N(fmt(px))}
+      <span class="num rr ${cls(r)}">${sgn(r)}R <small>${sgn(pct)}%</small></span></div>
+    <div class="sgbar" aria-hidden="true"><i class="zl" style="width:${(100 * e).toFixed(1)}%"></i><i class="zw" style="width:${(100 * (1 - e)).toFixed(1)}%"></i>
+      <i class="tick" style="left:${(100 * e).toFixed(1)}%"></i><i class="tick" style="left:${(100 * tp1).toFixed(1)}%"></i>
+      <i class="dot ${mv >= 0 ? "up" : "down"}" style="left:${(100 * at).toFixed(1)}%"></i></div>`;
 }
 
-/** The setup opened from the Market tab, above the chart (entry, stop, TPs, live R); the chart draws its lines. */
+function sgCard(x) {
+  const pc = (p) => sgn(100 * (p / x.entry - 1), 1) + "%";
+  const k = sgKey(x);
+  return `<li class="card sgc" data-sid="${esc(x.id)}">
+    <div class="sgh">${badge(x.symbol, x.coin)}<span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${esc(t("side_" + x.side))}</span>
+      <span class="tfb">${tfLabel(x.tf)}</span><span class="tm">${esc(sgTime(x.time))}</span></div>
+    <div class="sgst"><span class="sschip ${k}">${esc(t("ss_" + k))}</span>${x.status === "open" ? `<span class="left">${esc(setupLeft(x))}</span>` : ""}</div>
+    <div class="sglv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span>
+      <span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}<small class="num down">${pc(x.stop)}</small></span>
+      <span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>
+      <span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}<small class="num up">${pc(x.tp[1])}</small></span></div>
+    ${x.notional ? `<div class="sgsize">${esc(t("sg_size", { n: Math.round(x.notional).toLocaleString("en-US"), m: Math.round(x.margin).toLocaleString("en-US") }))}</div>` : ""}
+    <div class="sglive" data-sgsym="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgLiveHtml(x)}</div></li>`;
+}
+
+const SG_FILTERS = [["all", "f_all"], ["open", "f_open"], ["closed", "f_closed"], ["long", "LONG"], ["short", "SHORT"], ["1h", "1H"], ["4h", "4H"]];
+const sgMatch = (f, x) => f === "all" || (f === "open" ? x.status === "open" : f === "closed" ? x.status !== "open" :
+  f === "long" || f === "short" ? x.side === f : x.tf === f);
+
+function renderSignals() {
+  $("setups-title").textContent = t("setups_title");
+  $("setups-explain").textContent = t("setups_explain");
+  const su = SU(), rr = (v, d = 2) => (v == null ? "—" : sgn(v, d) + "R");
+  const per = (label, st) => {
+    const a = st ? st.all : { n: 0, closed: 0, win: null, avg_r: null, total_r: 0 };
+    const c = (k, v, extra = "") => `<div class="sgc5"><span class="k">${esc(t(k))}</span><span class="v num ${extra}">${v}</span></div>`;
+    return `<div class="sgper"><div class="pk">${esc(label)}</div><div class="sggrid">
+      ${c("sg_n", a.n)}${c("sg_closed", a.closed)}${c("sg_win", a.win == null ? "—" : Math.round(a.win) + "%")}
+      ${c("sg_avg", rr(a.avg_r), a.avg_r == null ? "" : cls(a.avg_r))}${c("sg_tot", rr(a.closed ? a.total_r : null, 1), a.closed ? cls(a.total_r) : "")}</div></div>`;
+  };
+  const closedN = su.stats ? su.stats.all.closed : 0;
+  $("sg-stats").innerHTML = `<div class="card sgstats">${per(t("sg_since", { d: su.live_since ? dayLabel(su.live_since, true) : "—" }), su.stats)}
+    ${per(t("sg_7d"), su.stats_7d)}${closedN < 20 ? `<div class="sgfew">${esc(t("sg_few"))}</div>` : ""}</div>`;
+  $("sg-filters").innerHTML = SG_FILTERS.map(([f, k]) =>
+    `<button type="button" data-f="${f}" class="${S.sgFilter === f ? "on" : ""}" aria-pressed="${S.sgFilter === f}">${esc(k.startsWith("f_") ? t(k) : k)}</button>`).join("");
+  const byTime = (a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0);
+  const all = su.open.concat(su.closed).sort(byTime);
+  const list = (rows) => {
+    const shown = rows.slice(0, S.sgShown);
+    return `<ul class="sglist">${shown.map(sgCard).join("")}</ul>` +
+      (rows.length > shown.length ? `<button class="more sgmore" id="sg-more" type="button">${esc(t("sg_more"))}</button>` : "");
+  };
+  const f = S.sgFilter;
+  let html;
+  if (!su.open.length && (f === "all" || f === "open")) {
+    html = `<div class="card sgempty">${esc(t("sg_empty"))}</div>`;
+    if (f === "all" && su.closed.length) html += `<h3 class="h3">${esc(t("sg_latest"))}</h3>` + list(su.closed.slice().sort(byTime));
+  } else {
+    const rows = all.filter((x) => sgMatch(f, x));
+    html = rows.length ? list(rows) : `<div class="card sgempty">${esc(t("sg_nomatch"))}</div>`;
+  }
+  $("sg-list").innerHTML = html;
+}
+
+const activeSetup = (sym) => (S.setupView && S.setupView.symbol === sym ? setupById(S.setupView.id) || S.setupView : null);
+
+/** The signal opened from the Signals tab, above the chart (entry, stop, TPs, live R); the chart draws its lines. */
 function renderSetupBanner(sym) {
-  const x = S.setupView && S.setupView.symbol === sym ? setupById(S.setupView.id) || S.setupView : null;
+  const x = activeSetup(sym);
   const el = $("setup-banner");
   el.hidden = !x;
   if (!x) return;
@@ -1142,6 +1200,10 @@ function renderPlan(sym, L) {
   }
   $("sig-status").hidden = z === "none";
   $("sig-status").textContent = signalSentence(sym, L);
+  if (activeSetup(sym)) {                     // an intraday signal is open on this page: its plan (banner) replaces the bot's
+    $("noplan").hidden = $("ladder").hidden = $("tps").hidden = $("sig-status").hidden = true;
+    $("entered-btn").hidden = false;                                       // "I entered" prefilled with the signal
+  }
 }
 
 /** The line under the chart: when the daily level steps down if no new highs come. */
@@ -1278,6 +1340,8 @@ function renderTfs(sym) {
 
 async function renderSignal() {
   const sym = S.coin, L = levelsFor(sym), s = S.bySym[sym];
+  $("coin-back-t").textContent = t("back");
+  storeSet("meller_last_coin", sym);
   $("entered-btn").textContent = t("i_entered");
   renderHero(sym, L);
   renderPlan(sym, L);
@@ -1365,15 +1429,28 @@ function jClean(x) {
   if (!x || typeof x !== "object" || !S.bySym[x.sym]) return null;
   const t = { id: String(x.id || Date.now() + Math.random()).slice(0, 40), sym: x.sym, entry: num(x.entry), stop: num(x.stop),
               tp1: num(x.tp1), tp2: num(x.tp2), size: num(x.size), opened: String(x.opened || "").slice(0, 10), closed: null };
-  if (!(t.entry > 0 && t.size > 0 && t.stop > 0 && t.stop < t.entry)) return null;
+  if (x.side === "short") t.side = "short";                              // from a SHORT intraday signal
+  if (!(t.entry > 0 && t.size > 0 && t.stop > 0 && (t.side === "short" ? t.stop > t.entry : t.stop < t.entry))) return null;
   if (x.closed && num(x.closed.price) > 0) t.closed = { price: num(x.closed.price), date: String(x.closed.date || "").slice(0, 10) };
   return t;
 }
 const jR = (t, px) => (px - t.entry) / (t.entry - t.stop);
-const jUsd = (t, px) => t.size * (px / t.entry - 1);
+const jUsd = (t, px) => (t.side === "short" ? -1 : 1) * t.size * (px / t.entry - 1);
 
 function openSheet() {
-  const sym = S.coin, L = levelsFor(sym), p = price(sym), f = $("entry-form");
+  const sym = S.coin, L = levelsFor(sym), p = price(sym), f = $("entry-form"), x = activeSetup(sym);
+  S.sheetSide = x ? x.side : "long";
+  if (x) {                                                                 // prefilled with the intraday signal
+    f.entry.value = fmtNum(x.entry);
+    f.stop.value = fmtNum(x.stop);
+    f.tp1.value = fmtNum(x.tp[0]);
+    f.tp2.value = fmtNum(x.tp[1]);
+    f.size.value = (x.notional || (50 / sgRisk(x)) * x.entry).toFixed(2);
+    $("sheet-title").textContent = `${t("i_entered")}: ${S.bySym[sym].coin} ${t("side_" + x.side)} ${tfLabel(x.tf)}`;
+    $("sheet-hint").textContent = t("f_hint");
+    $("sheet").hidden = false;
+    return;
+  }
   const stop = L.stop, entry = p;
   const r = entry - stop;
   f.entry.value = fmtNum(entry);
@@ -1390,7 +1467,7 @@ function saveSheet(e) {
   e.preventDefault();
   const f = $("entry-form");
   const tr = jClean({ id: Date.now().toString(36), sym: S.coin, entry: f.entry.value, stop: f.stop.value, tp1: f.tp1.value,
-                      tp2: f.tp2.value, size: f.size.value, opened: today10() });
+                      tp2: f.tp2.value, size: f.size.value, opened: today10(), side: S.sheetSide });
   if (!tr) { $("sheet-hint").textContent = t("f_bad"); return; }
   jSave(jLoad().concat([tr]));
   $("sheet").hidden = true;
@@ -1401,14 +1478,14 @@ function renderJournal() {
   const all = jLoad().map(jClean).filter(Boolean);
   const open = all.filter((x) => !x.closed), done = all.filter((x) => x.closed).reverse();
   const cards = open.map((x) => {
-    const coin = S.bySym[x.sym].coin, px = price(x.sym), r = jR(x, px), pc = 100 * (px / x.entry - 1);
+    const coin = S.bySym[x.sym].coin, px = price(x.sym), r = jR(x, px), pc = (x.side === "short" ? -100 : 100) * (px / x.entry - 1);
     const bot = posOf(x.sym);
     const br = bot ? liveR(bot, px) : 0;
     const vs = bot ? `<div class="vs"><span></span><span class="h">${esc(t("me"))}</span><span class="h">${esc(t("bot"))}</span>
         <span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}${N(fmt(bot.entry))}
         <span class="k">${esc(t("result"))}</span>${N(sgn(r) + "R", cls(r))}${N(sgn(br) + "R", cls(br))}</div>` : "";
     return `<div class="card jcard">
-      <div class="phead">${badge(x.sym, coin)}<span class="cname">${esc(coin)}</span><span class="since">${esc(t("opened", { d: x.opened }))}</span></div>
+      <div class="phead">${badge(x.sym, coin)}<span class="cname">${esc(coin)}</span>${x.side === "short" ? `<span class="sside short">SHORT</span>` : ""}<span class="since">${esc(t("opened", { d: x.opened }))}</span></div>
       <div class="pnl">${N(sgn(r) + "R", "r " + cls(r))}${N(sgn(pc) + "%", "usd " + cls(pc))}${N(usd(jUsd(x, px)), "usd " + cls(pc))}</div>
       <div class="kv">
         <span class="k">${esc(t("entry"))}</span><span class="v">${N(fmt(x.entry))}</span>
@@ -1563,6 +1640,10 @@ function renderBotResults() {
 
 function renderPositions() {
   renderJournal();
+  $("slow-title").textContent = t("slow_title");
+  const bear = !!(S.data.market && S.data.market.state === "bear");
+  $("slow-note").hidden = !bear;
+  $("slow-note").textContent = bear ? t("slow_sleep") : "";
   renderBotResults();
   const ps = S.data.positions;
   if (!ps.length) { $("positions").innerHTML = `<div class="card empty">${esc(t("no_pos"))}</div>`; return; }
@@ -1630,6 +1711,7 @@ function renderSigNews(sym) {
 /** [line selector, items that may shrink (":scope" = the line itself), smallest font in px] */
 const FIT = [
   [".l1", [".price", ".cname", ".chg"], 12],
+  [".sgc5", [".v"], 10],
   [".dist .lbl", [":scope"], 11],
   [".hero-top", [".cname", ".schip"], 12],
   [".hero-price", [".big"], 20],
@@ -1683,6 +1765,12 @@ function destroyCharts() {
 
 function show(tab) {
   if (tab !== S.tab) destroyCharts();
+  if (tab !== "signal") {
+    S.prevTab = tab;
+    S.coinPushed = false;
+    try { history.replaceState(null, "", "#" + tab); } catch (e) { /* file:// */ }
+  }
+  document.body.classList.toggle("coin-open", tab === "signal");
   if (tab !== "signal") wsKline(null);
   if (tab !== "overview") closeBubbles();
   S.tab = tab;
@@ -1695,6 +1783,7 @@ function show(tab) {
 function render() {
   if (!S.data) return;
   renderHeader();
+  if (S.tab === "signals") renderSignals();
   if (S.tab === "market") renderMarket();
   if (S.tab === "signal") renderSignal();
   if (S.tab === "positions") renderPositions();
@@ -1703,20 +1792,32 @@ function render() {
   fitAll();
 }
 
+/** The full-screen coin page (chart, plan, news) over the current tab; Back returns to that tab. */
 function openCoin(sym, setup = null) {
   S.coin = sym;
   S.setupView = setup;
   if (setup) S.tf = hasSpot(sym) ? setup.tf : "1d";
+  if (S.tab !== "signal") {
+    try { history.pushState(null, "", "#signal/" + sym); S.coinPushed = true; } catch (e) { S.coinPushed = false; }
+  }
   show("signal");
 }
 
-/** Deep links: #signal/BTCUSDT, #overview, ... Sets the coin; returns the tab named in the hash (or the current one).
- *  The old #challenge link (the tab is gone) opens the Overview. */
+function closeCoin() {
+  if (S.coinPushed) history.back();                   // the hashchange listener shows the previous tab
+  else show(S.prevTab || "signals");
+}
+
+/** Deep links: #signal/BTCUSDT (coin page), #signals, #overview, ... Sets the coin; returns the tab named in the hash
+ *  (or the current one). #signal without a coin opens the last viewed coin; the old #challenge opens the Overview. */
 function hashTab() {
   let [tab, coin] = location.hash.slice(1).split("/");
-  if (coin && S.bySym[coin]) S.coin = coin;
+  if (tab === "signal") {
+    const last = storeGet("meller_last_coin");
+    if (coin && S.bySym[coin]) S.coin = coin; else if (last && S.bySym[last]) S.coin = last;
+  }
   if (tab === "challenge") tab = "overview";
-  return ["market", "signal", "positions", "news", "overview"].includes(tab) ? tab : S.tab;
+  return ["signals", "market", "signal", "positions", "news", "overview"].includes(tab) ? tab : S.tab === "signal" ? S.prevTab : S.tab;
 }
 window.addEventListener("hashchange", () => { if (S.data) show(hashTab()); });
 
@@ -1765,14 +1866,23 @@ function track(name) {
 }
 setInterval(() => {                                   // the "closes in N h" countdown
   if (!S.data) return;
-  if (S.tab === "market") { renderSetups(); fitAll(); }
+  if (S.tab === "signals") { renderSignals(); fitAll(); }
   if (S.tab === "signal" && S.setupView) renderSetupBanner(S.coin);
 }, 60000);
-$("setups").addEventListener("click", (e) => {
-  if (e.target.closest("#setups-more")) { S.setupsAll = !S.setupsAll; renderSetups(); fitAll(); return; }
-  const card = e.target.closest(".sup[data-sid]"), x = card && setupById(card.dataset.sid);
+$("sg-filters").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-f]");
+  if (!b || b.dataset.f === S.sgFilter) return;
+  S.sgFilter = b.dataset.f;
+  S.sgShown = 20;
+  renderSignals();
+  fitAll();
+});
+$("sg-list").addEventListener("click", (e) => {
+  if (e.target.closest("#sg-more")) { S.sgShown += 20; renderSignals(); fitAll(); return; }
+  const card = e.target.closest(".sgc[data-sid]"), x = card && setupById(card.dataset.sid);
   if (x && S.bySym[x.symbol]) openCoin(x.symbol, x);
 });
+$("coin-back").addEventListener("click", closeCoin);
 $("setups-info").addEventListener("click", () => {
   const ex = $("setups-explain"), on = ex.hidden;
   ex.hidden = !on;

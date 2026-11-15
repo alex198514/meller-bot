@@ -44,11 +44,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Meller Bot">
-  <link rel="manifest" href="manifest.json?v=24">
+  <link rel="manifest" href="manifest.json?v=25">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>Meller Bot</title>
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -71,13 +71,18 @@
   </header>
 
   <main id="main">
-    <section class="tab" id="tab-market">
+    <section class="tab" id="tab-signals">
       <div class="list-head">
         <h2 id="setups-title"></h2>
         <button class="info" id="setups-info" type="button" aria-expanded="false" aria-controls="setups-explain">i</button>
       </div>
       <p class="explain" id="setups-explain" hidden></p>
-      <div id="setups"></div>
+      <div id="sg-stats"></div>
+      <div class="fchips" id="sg-filters" role="group"></div>
+      <div id="sg-list"></div>
+    </section>
+
+    <section class="tab" id="tab-market" hidden>
       <input id="search" type="search" autocomplete="off" spellcheck="false">
       <div class="list-head">
         <h2 id="near-title"></h2>
@@ -88,7 +93,8 @@
       <button class="more" id="more" type="button" hidden></button>
     </section>
 
-    <section class="tab" id="tab-signal" hidden>
+    <section class="tab coin-page" id="tab-signal" hidden>
+      <div class="backbar"><button class="back-btn" id="coin-back" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="coin-back-t"></span></button></div>
       <div class="card hero" id="sig-hero"></div>
       <div class="card sbanner" id="setup-banner" hidden></div>
       <div class="card noplan" id="noplan" hidden></div>
@@ -106,9 +112,11 @@
 
     <section class="tab" id="tab-positions" hidden>
       <div id="journal"></div>
-      <h2 class="h2" id="bot-pos-title"></h2>
+      <h2 class="h2 slow-title" id="slow-title"></h2>
+      <p class="slow-note" id="slow-note" hidden></p>
+      <h3 class="h3" id="bot-pos-title"></h3>
       <div id="positions"></div>
-      <h2 class="h2" id="bot-res-title"></h2>
+      <h3 class="h3" id="bot-res-title"></h3>
       <div id="bot-results"></div>
     </section>
 
@@ -172,13 +180,13 @@
   </div>
 
   <nav class="tabbar" id="tabbar">
-    <button data-tab="market" class="active" type="button">
+    <button data-tab="signals" class="active" type="button">
+      <span class="ico"><svg viewBox="0 0 24 24"><path d="M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6z"/><path class="ln" d="M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6z"/></svg></span>
+      <span data-t="tab_signals"></span>
+    </button>
+    <button data-tab="market" type="button">
       <span class="ico"><svg viewBox="0 0 24 24"><path d="M3 19V14.5l5-5 4 4 7-7.5V19z"/><path class="ln" d="M3 14.5l5-5 4 4 7-7.5"/></svg></span>
       <span data-t="tab_market"></span>
-    </button>
-    <button data-tab="signal" type="button">
-      <span class="ico"><svg viewBox="0 0 24 24"><path d="M4 8h4v9H4zM10 5h4v10h-4zM16 10h4v8h-4z"/><path class="ln" d="M6 5v15M12 3v15M18 7v14"/></svg></span>
-      <span data-t="tab_signal"></span>
     </button>
     <button data-tab="positions" type="button">
       <span class="ico"><svg viewBox="0 0 24 24"><path d="M3.5 8h17v11.5h-17z"/><path class="ln" d="M9 8V5.5h6V8M3.5 13h17"/></svg></span>
@@ -195,6 +203,6 @@
   </nav>
 
   <script data-goatcounter="https://mellerbot.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
