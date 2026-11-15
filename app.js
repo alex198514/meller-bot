@@ -43,7 +43,9 @@ const I18N = {
       "стоп в безубыток), TP2 +3R. Размер на риск $50 от $10 000. Через 48 свечей сетап закрывается. Это не проверенный сигнал " +
       "стратегии: результаты считаются по 5-минутным свечам с комиссией 0.06% за круг.",
     setups_none: "Открытых сетапов нет. Сканер проверяет 1H и 4H свечи каждый час.", setups_more: "Показать все {n}", setups_less: "Свернуть",
-    setups_line: "Сетапов: {n} · закрыто {c} · прибыльных {w} · средний {a} · итого {t}", setups_empty: "Сетапов пока не было.",
+    setups_line: "Живые с {d}: сетапов {n} · закрыто {c} · прибыльных {w} · средний {a} · итого {t}",
+    setups_empty: "Живых сетапов с {d} пока не было.",
+    setups_dry: "Проверка до запуска ({a}–{b}, dry run, не входит в живые): сетапов {n} · прибыльных {w} · средний {r} · итого {t}",
     setups_cell: "{n} · {w} · ср. {a}", setups_not: "Сетап, не проверенный сигнал. Решение твоё.", setup_lbl: "сетап",
     su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "истёк", su_tp1: "TP1 взят",
     su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
@@ -103,7 +105,9 @@ const I18N = {
       "stop to breakeven), TP2 +3R. Sized for $50 risk on $10,000. A setup closes after 48 candles. Not a tested strategy signal: " +
       "results are checked on 5-minute candles after a 0.06% round-trip fee.",
     setups_none: "No open setups. The scanner checks 1H and 4H candles every hour.", setups_more: "Show all {n}", setups_less: "Show less",
-    setups_line: "Setups: {n} · closed {c} · win rate {w} · average {a} · total {t}", setups_empty: "No setups yet.",
+    setups_line: "Live since {d}: setups {n} · closed {c} · win rate {w} · average {a} · total {t}",
+    setups_empty: "No live setups since {d} yet.",
+    setups_dry: "Check before going live ({a}–{b}, dry run, not part of live): {n} setups · win rate {w} · average {r} · total {t}",
     setups_cell: "{n} · {w} · avg {a}", setups_not: "A setup, not a tested signal. Your decision.", setup_lbl: "setup",
     su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "expired", su_tp1: "TP1 taken",
     su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
@@ -1069,6 +1073,10 @@ function renderSetups() {
   const st = su.stats;
   const pct = (w) => (w == null ? "—" : Math.round(w) + "%");
   const rr = (v, d = 2) => (v == null ? "—" : sgn(v, d) + "R");
+  const since = su.live_since ? dayLabel(su.live_since, true) : "—";
+  const dr = su.dry_run && su.dry_run.stats && su.dry_run.stats.all;
+  const dry = dr ? `<div class="snote sdry">${esc(t("setups_dry", { a: dayLabel(su.dry_run.from), b: dayLabel(su.dry_run.to), n: dr.n,
+      w: pct(dr.win), r: rr(dr.avg_r), t: rr(dr.total_r, 1) }))}</div>` : "";
   let stats = "";
   if (st && st.all.n) {
     const cell = (k, label) => {
@@ -1076,11 +1084,12 @@ function renderSetups() {
       return `<div class="scell"><span class="k">${label}</span><span class="v num ${c.closed ? cls(c.total_r) : ""}">${rr(c.closed ? c.total_r : null, 1)}</span>
         <small>${esc(t("setups_cell", { n: c.n, w: pct(c.win), a: c.avg_r == null ? "—" : sgn(c.avg_r) }))}</small></div>`;
     };
-    stats = `<div class="card sstats"><div class="sline">${esc(t("setups_line", { n: st.all.n, c: st.all.closed, w: pct(st.all.win),
+    stats = `<div class="card sstats"><div class="sline">${esc(t("setups_line", { d: since, n: st.all.n, c: st.all.closed, w: pct(st.all.win),
         a: rr(st.all.avg_r), t: rr(st.all.closed ? st.all.total_r : null, 1) }))}</div>
       <div class="sgrid">${cell("1h", "1H")}${cell("4h", "4H")}${cell("long", "LONG")}${cell("short", "SHORT")}</div>
+      ${dry}<div class="snote">${esc(t("setups_not"))}</div></div>`;
+  } else stats = `<div class="card sstats"><div class="sline">${esc(t("setups_empty", { d: since }))}</div>${dry}
       <div class="snote">${esc(t("setups_not"))}</div></div>`;
-  } else stats = `<div class="snote">${esc(t("setups_empty"))} ${esc(t("setups_not"))}</div>`;
   $("setups").innerHTML = list + stats;
 }
 
