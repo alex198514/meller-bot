@@ -4,6 +4,7 @@
 const I18N = {
   ru: {
     tab_signals: "Сигналы", back: "Назад",
+    test_mode: "Тестовый режим: сигналы собирают живую статистику, это не рекомендация",
     mf_bear: "Рынок медвежий: лонги = против рынка", mf_bull: "Рынок бычий: шорты = против рынка",
     mf_side: "Боковик: оба направления по рынку", mf_none: "Нет данных о рынке",
     against: "⚠️ против рынка", sg_with: "По рынку", sg_against: "Против рынка",
@@ -11,7 +12,7 @@ const I18N = {
     sg_since: "С {d}", sg_7d: "За 7 дней", sg_n: "Сигналов", sg_closed: "Закрыто", sg_win: "Прибыльных", sg_avg: "Средний R",
     sg_tot: "Итого R", sg_few: "Мало данных, статистика копится.", f_all: "Все", f_open: "В работе", f_closed: "Закрытые",
     ss_open: "в работе", ss_tp1: "TP1 взят, стоп в безубыток", ss_tp1_be: "TP1 взят, закрыт в безубытке", ss_tp2: "TP2 взят",
-    ss_stop: "стоп", ss_expired: "закрыт по времени", sg_size: "Размер {n} USDT · маржа 5x {m} USDT (риск $50)",
+    ss_stop: "стоп", ss_expired: "закрыт по времени", ss_time: "закрыт по времени", sg_size: "Размер {n} USDT · маржа 5x {m} USDT (риск $50)",
     sg_now: "Сейчас", sg_exit: "Выход", sg_empty: "Сейчас открытых сигналов нет. Сканер проверяет рынок каждый час в :35.",
     sg_latest: "Последние закрытые", sg_nomatch: "Нет сигналов по этому фильтру.", sg_more: "Показать ещё",
     slow_title: "Медленный бот (1D)", slow_sleep: "Спит: рынок медвежий, бот покупает только пробои вверх.",
@@ -72,7 +73,7 @@ const I18N = {
     setups_empty: "Живых сигналов с {d} пока не было.",
     setups_dry: "Проверка до запуска ({a}–{b}, dry run, не входит в живые): сетапов {n} · прибыльных {w} · средний {r} · итого {t}",
     setups_cell: "{n} · {w} · ср. {a}", setups_not: "Новая стратегия, статистика копится.", setup_lbl: "сигнал",
-    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "закрыт через 24 ч", su_tp1: "TP1 взят", su_left: "закроется через {n}", su_soon: "закрывается", u_h: "{n} ч", u_m: "{n} мин",
+    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "закрыт через 24 ч", su_time: "закрыт через 24 ч", su_tp1: "TP1 взят", su_left: "закроется через {n}", su_soon: "закрывается", u_h: "{n} ч", u_m: "{n} мин",
     su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
@@ -91,6 +92,7 @@ const I18N = {
   },
   en: {
     tab_signals: "Signals", back: "Back",
+    test_mode: "Test mode: the signals collect live statistics, this is not a recommendation",
     mf_bear: "Bear market: longs = against the market", mf_bull: "Bull market: shorts = against the market",
     mf_side: "Sideways: both directions are with the market", mf_none: "No market data",
     against: "⚠️ against the market", sg_with: "With market", sg_against: "Against market",
@@ -98,7 +100,7 @@ const I18N = {
     sg_since: "Since {d}", sg_7d: "Last 7 days", sg_n: "Signals", sg_closed: "Closed", sg_win: "Win rate", sg_avg: "Avg R",
     sg_tot: "Total R", sg_few: "Not enough data yet, stats are still building.", f_all: "All", f_open: "Open", f_closed: "Closed",
     ss_open: "open", ss_tp1: "TP1 hit, stop at breakeven", ss_tp1_be: "TP1 hit, closed at breakeven", ss_tp2: "TP2 hit",
-    ss_stop: "stopped out", ss_expired: "closed on time", sg_size: "Size {n} USDT · margin 5x {m} USDT ($50 risk)",
+    ss_stop: "stopped out", ss_expired: "closed on time", ss_time: "closed on time", sg_size: "Size {n} USDT · margin 5x {m} USDT ($50 risk)",
     sg_now: "Now", sg_exit: "Exit", sg_empty: "No open signals right now. The scanner checks the market every hour at :35.",
     sg_latest: "Latest closed", sg_nomatch: "No signals for this filter.", sg_more: "Show more",
     slow_title: "Slow bot (1D)", slow_sleep: "Asleep: the market is bearish, the bot only buys upside breakouts.",
@@ -159,7 +161,7 @@ const I18N = {
     setups_empty: "No live signals since {d} yet.",
     setups_dry: "Check before going live ({a}–{b}, dry run, not part of live): {n} setups · win rate {w} · average {r} · total {t}",
     setups_cell: "{n} · {w} · avg {a}", setups_not: "A new strategy, stats are still building.", setup_lbl: "signal",
-    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "closed at 24 h", su_tp1: "TP1 taken", su_left: "closes in {n}", su_soon: "closing", u_h: "{n} h", u_m: "{n} min",
+    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "closed at 24 h", su_time: "closed at 24 h", su_tp1: "TP1 taken", su_left: "closes in {n}", su_soon: "closing", u_h: "{n} h", u_m: "{n} min",
     su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
@@ -1105,7 +1107,8 @@ function setupR(x, px) {
   const sg = x.side === "long" ? 1 : -1, risk = Math.abs(x.entry - x.stop), R = SU().rules;
   if (x.status !== "open" && x.r != null) return x.r;
   if (x.tp.length === 1) {                                 // wave 3: one target, no breakeven step
-    const mv1 = Math.max(-1, Math.min((sg * (x.tp[0] - x.entry)) / risk, (sg * (px - x.entry)) / risk));
+    const top = (sg * (x.tp[0] - x.entry)) / risk;          // <= 0: a gap fill past the target, which then is no target
+    const mv1 = Math.max(-1, Math.min(top > 0 ? top : Infinity, (sg * (px - x.entry)) / risk));
     return mv1 - (R.fee_rt * x.entry) / risk;
   }
   let mv = Math.min(R.tp_r[1], (sg * (px - x.entry)) / risk);
@@ -1123,21 +1126,21 @@ function setupLeft(x) {
 
 function setupStatus(x) {
   if (x.status === "open") return x.tp1_hit ? t("su_tp1") : t("su_open");
-  return t("su_" + x.status);
+  return t("su_" + (x.status === "expired" ? "time" : x.status));
 }
 
 const sgTime = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)} ${iso.slice(11, 16)} UTC`;
 const sgDir = (x) => (x.side === "long" ? 1 : -1);
 const sgRisk = (x) => Math.abs(x.entry - x.stop);
-/** Status chip key: open, tp1 (open, TP1 hit), tp1_be, tp2, stop, expired. */
-const sgKey = (x) => (x.status === "open" ? (x.tp1_hit ? "tp1" : "open") : x.status);
+/** Status chip key: open, tp1 (open, TP1 hit), tp1_be, tp2, tp, stop, time (24-hour exit; "expired" in old data). */
+const sgKey = (x) => (x.status === "open" ? (x.tp1_hit ? "tp1" : "open") : x.status === "expired" ? "time" : x.status);
 
 /** The live part of a signal card: price (or exit), result in R and %, the stop .. TP2 bar. */
 function sgLiveHtml(x) {
   const open = x.status === "open", px = open ? setupPx(x) : x.exit != null ? x.exit : x.last;
   const r = setupR(x, px), pct = (100 * r * sgRisk(x)) / x.entry;
   const mv = (sgDir(x) * (px - x.entry)) / sgRisk(x);
-  const top = x.tp.length === 1 ? (sgDir(x) * (x.tp[0] - x.entry)) / sgRisk(x) : SU().rules.tp_r[1];
+  const top = x.tp.length === 1 ? ((v) => (v > 0 ? v : 1))((sgDir(x) * (x.tp[0] - x.entry)) / sgRisk(x)) : SU().rules.tp_r[1];
   const at = Math.max(0, Math.min(1, (mv + 1) / (1 + top)));
   const tp1 = x.tp.length === 1 ? 1 : (1 + SU().rules.tp_r[0]) / (1 + top), e = 1 / (1 + top);
   return `<div class="ln1"><span class="k">${esc(open ? t("sg_now") : t("sg_exit"))}</span>${N(fmt(px))}
@@ -1212,7 +1215,7 @@ function renderSignals() {
     const m = su.filter.market;
     html = `<div class="mfline ${m === "bear" ? "bear" : m === "bull" ? "bull" : ""}">${esc(t(m === "bear" || m === "bull" || m === "side" ? "mf_" + m : "mf_none"))}</div>` + html;
   }
-  $("sg-list").innerHTML = html;
+  $("sg-list").innerHTML = `<p class="testmode">${esc(t("test_mode"))}</p>` + html;
 }
 
 const activeSetup = (sym) => (S.setupView && S.setupView.symbol === sym ? setupById(S.setupView.id) || S.setupView : null);

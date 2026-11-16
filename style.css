@@ -584,7 +584,7 @@ html.lt360 .sggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sschip { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
 .sschip.open { color: var(--blue); background: rgba(var(--blue-rgb), 0.13); }
 .sschip.tp1 { color: var(--green); background: rgba(var(--green-rgb), 0.14); }
-.sschip.tp1_be, .sschip.expired { color: var(--muted); background: rgba(var(--fg-rgb), 0.08); }
+.sschip.tp1_be, .sschip.expired, .sschip.time { color: var(--muted); background: rgba(var(--fg-rgb), 0.08); }
 .sschip.tp2 { color: var(--on-green); background: var(--green); }
 .sschip.stop { color: var(--red); background: rgba(var(--red-rgb), 0.14); }
 .sgst .left { font-size: 13px; font-weight: 700; color: var(--gold); }
@@ -663,3 +663,4 @@ body.coin-open main { padding-bottom: calc(var(--sa-b) + 24px); }
 .seg.six { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .seg.six::-webkit-scrollbar { display: none; }
 .seg.six button { flex: 1 0 auto; min-width: 40px; padding: 10px 4px; font-size: 15px; }
+.testmode { margin: 0 0 8px; font-size: 13px; line-height: 1.35; color: var(--muted); }
