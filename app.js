@@ -4,7 +4,8 @@
 const I18N = {
   ru: {
     tab_signals: "Сигналы", back: "Назад",
-    test_mode: "Тестовый режим: сигналы собирают живую статистику, это не рекомендация",
+    test_mode: "Наблюдение, не рекомендация: ни один тип сигнала пока не прошёл 12-месячный бэктест, пушей нет",
+    obs_tag: "наблюдение, не рекомендация", sg_type_since: "{type} · с {d}",
     mf_bear: "Рынок медвежий: лонги = против рынка", mf_bull: "Рынок бычий: шорты = против рынка",
     mf_side: "Боковик: оба направления по рынку", mf_none: "Нет данных о рынке",
     against: "⚠️ против рынка", sg_with: "По рынку", sg_against: "Против рынка",
@@ -73,7 +74,9 @@ const I18N = {
     setups_empty: "Живых сигналов с {d} пока не было.",
     setups_dry: "Проверка до запуска ({a}–{b}, dry run, не входит в живые): сетапов {n} · прибыльных {w} · средний {r} · итого {t}",
     setups_cell: "{n} · {w} · ср. {a}", setups_not: "Новая стратегия, статистика копится.", setup_lbl: "сигнал",
-    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "закрыт через 24 ч", su_time: "закрыт через 24 ч", su_tp1: "TP1 взят", su_left: "закроется через {n}", su_soon: "закрывается", u_h: "{n} ч", u_m: "{n} мин",
+    su_open: "открыт", su_stop: "стоп", su_tp1_be: "TP1 → безубыток", su_tp2: "TP2", su_expired: "закрыт через 24 ч", su_time: "закрыт через 24 ч", su_tp1: "TP1 взят", su_left: "закроется через {n}", su_left_order: "заявка ещё {n}", su_pending: "заявка на линии", ss_pending: "заявка на линии",
+    su_time48: "закрыт через 48 ч", ss_tp1_time: "TP1, затем по времени", su_tp1_time: "TP1 → 48 ч",
+    friend_badge: "🤝 Сетап друга (наблюдение)", sg_friend: "Сетап друга (только шорты)", friend_note: "Наблюдение 4–6 недель, не рекомендация", su_soon: "закрывается", u_h: "{n} ч", u_m: "{n} мин",
     su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
@@ -92,7 +95,8 @@ const I18N = {
   },
   en: {
     tab_signals: "Signals", back: "Back",
-    test_mode: "Test mode: the signals collect live statistics, this is not a recommendation",
+    test_mode: "Observation, not a recommendation: no signal type has passed the 12-month backtest yet, no pushes",
+    obs_tag: "observation, not a recommendation", sg_type_since: "{type} · since {d}",
     mf_bear: "Bear market: longs = against the market", mf_bull: "Bull market: shorts = against the market",
     mf_side: "Sideways: both directions are with the market", mf_none: "No market data",
     against: "⚠️ against the market", sg_with: "With market", sg_against: "Against market",
@@ -161,7 +165,9 @@ const I18N = {
     setups_empty: "No live signals since {d} yet.",
     setups_dry: "Check before going live ({a}–{b}, dry run, not part of live): {n} setups · win rate {w} · average {r} · total {t}",
     setups_cell: "{n} · {w} · avg {a}", setups_not: "A new strategy, stats are still building.", setup_lbl: "signal",
-    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "closed at 24 h", su_time: "closed at 24 h", su_tp1: "TP1 taken", su_left: "closes in {n}", su_soon: "closing", u_h: "{n} h", u_m: "{n} min",
+    su_open: "open", su_stop: "stop", su_tp1_be: "TP1 → breakeven", su_tp2: "TP2", su_expired: "closed at 24 h", su_time: "closed at 24 h", su_tp1: "TP1 taken", su_left: "closes in {n}", su_left_order: "order for {n} more", su_pending: "limit order on the line", ss_pending: "limit order on the line",
+    su_time48: "closed at 48 h", ss_tp1_time: "TP1, then on time", su_tp1_time: "TP1 → 48 h",
+    friend_badge: "🤝 Friend's setup (observation)", sg_friend: "Friend's setup (shorts only)", friend_note: "Observation for 4–6 weeks, not a recommendation", su_soon: "closing", u_h: "{n} h", u_m: "{n} min",
     su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
@@ -1118,14 +1124,15 @@ function setupR(x, px) {
 
 /** "закроется через 7 ч" for an open signal (its 24-hour market exit), "" if unknown. */
 function setupLeft(x) {
-  if (x.status !== "open" || !x.expires) return "";
+  if ((x.status !== "open" && x.status !== "pending") || !x.expires) return "";
   const min = Math.round((Date.parse(x.expires) - Date.now()) / 60000);
   if (min <= 0) return t("su_soon");
-  return t("su_left", { n: min >= 60 ? t("u_h", { n: Math.round(min / 60) }) : t("u_m", { n: min }) });
+  return t(x.status === "pending" ? "su_left_order" : "su_left", { n: min >= 60 ? t("u_h", { n: Math.round(min / 60) }) : t("u_m", { n: min }) });
 }
 
 function setupStatus(x) {
   if (x.status === "open") return x.tp1_hit ? t("su_tp1") : t("su_open");
+  if (x.type === "friend" && x.status === "time") return t("su_time48");
   return t("su_" + (x.status === "expired" ? "time" : x.status));
 }
 
@@ -1154,22 +1161,24 @@ function sgCard(x) {
   const pc = (p) => sgn(100 * (p / x.entry - 1), 1) + "%";
   const k = sgKey(x);
   return `<li class="card sgc" data-sid="${esc(x.id)}">
-    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : ""}
+    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : x.type === "friend" ? `<div class="friendbadge">${esc(t("friend_badge"))}</div>` : ""}
     <div class="sgh">${badge(x.symbol, x.coin)}<span class="cn">${esc(x.coin)}</span><span class="sside ${x.side}">${esc(t("side_" + x.side))}</span>
       <span class="tfb">${tfLabel(x.tf)}</span><span class="tm">${esc(sgTime(x.time))}</span></div>
+    <div class="obstag">${esc(t("obs_tag"))}</div>
     ${x.against ? `<div class="against">${esc(t("against"))}</div>` : ""}
-    <div class="sgst"><span class="sschip ${k}">${esc(t("ss_" + k))}</span>${x.status === "open" ? `<span class="left">${esc(setupLeft(x))}</span>` : ""}</div>
+    <div class="sgst"><span class="sschip ${k}">${esc(t("ss_" + k))}</span>${x.status === "open" || x.status === "pending" ? `<span class="left">${esc(setupLeft(x))}</span>` : ""}</div>
     <div class="sglv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span>
       <span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}<small class="num down">${pc(x.stop)}</small></span>
       ${x.tp.length === 1 ? `<span><span class="k">${esc(t("target"))}</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>` :
       `<span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>
       <span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}<small class="num up">${pc(x.tp[1])}</small></span>`}</div>
     ${x.notional ? `<div class="sgsize">${esc(t("sg_size", { n: Math.round(x.notional).toLocaleString("en-US"), m: Math.round(x.margin).toLocaleString("en-US") }))}</div>` : ""}
-    <div class="sglive" data-sgsym="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgLiveHtml(x)}</div></li>`;
+    ${x.status === "pending" ? "" : `<div class="sglive" data-sgsym="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgLiveHtml(x)}</div>`}</li>`;
 }
 
 const SG_FILTERS = [["all", "f_all"], ["open", "f_open"], ["closed", "f_closed"], ["long", "LONG"], ["short", "SHORT"], ["1h", "1H"], ["4h", "4H"]];
-const sgMatch = (f, x) => f === "all" || (f === "open" ? x.status === "open" : f === "closed" ? x.status !== "open" :
+const sgOpen = (x) => x.status === "open" || x.status === "pending";      // pending: a friend limit order
+const sgMatch = (f, x) => f === "all" || (f === "open" ? sgOpen(x) : f === "closed" ? !sgOpen(x) :
   f === "long" || f === "short" ? x.side === f : x.tf === f);
 
 function renderSignals() {
@@ -1184,15 +1193,17 @@ function renderSignals() {
       ${c("sg_avg", rr(a.avg_r), a.avg_r == null ? "" : cls(a.avg_r))}${c("sg_tot", rr(a.closed ? a.total_r : null, 1), a.closed ? cls(a.total_r) : "")}</div></div>`;
   };
   const closedN = su.stats ? su.stats.all.closed : 0;
+  const one = (st) => (st ? { all: st } : null);            // a per-type sub-stat in per()'s shape
+  const since = su.live_since ? dayLabel(su.live_since, true) : "—";
   const wa = (st) => {                                      // live since start: with vs against the market
     if (!st || !st.with) return "";
     const one = (k, a) => `<div class="sgwa ${k === "against" ? "ag" : k === "wave" ? "wv" : ""}"><span class="k">${esc(t("sg_" + k))}</span>
       <span class="v num">${a.n} · ${a.closed ? `<span class="${cls(a.avg_r)}">${rr(a.avg_r)}</span>` : "—"}</span></div>`;
-    return `<div class="sgwarow">${one("with", st.with)}${one("against", st.against)}</div>` +
-      (st.breakout ? `<div class="sgwarow">${one("breakout", st.breakout)}${one("wave", st.wave)}</div>` : "");
+    return `<div class="sgwarow">${one("with", st.with)}${one("against", st.against)}</div>`;
   };
-  $("sg-stats").innerHTML = `<div class="card sgstats">${per(t("sg_since", { d: su.live_since ? dayLabel(su.live_since, true) : "—" }), su.stats)}
-    ${per(t("sg_7d"), su.stats_7d)}${wa(su.stats)}${closedN < 20 ? `<div class="sgfew">${esc(t("sg_few"))}</div>` : ""}</div>`;
+  // every type has its own stats line (observation only, see CLAUDE.md); with / against = breakout + wave 3
+  $("sg-stats").innerHTML = `<div class="card sgstats">${per(t("sg_type_since", { type: t("sg_breakout"), d: since }), one(su.stats && su.stats.breakout))}
+    ${per(t("sg_type_since", { type: t("sg_wave"), d: since }), one(su.stats && su.stats.wave))}${wa(su.stats)}${su.stats_friend ? `<div class="friendnote">${esc(t("friend_note"))}</div>${per(t("sg_friend"), su.stats_friend)}` : ""}${closedN < 20 ? `<div class="sgfew">${esc(t("sg_few"))}</div>` : ""}</div>`;
   $("sg-filters").innerHTML = SG_FILTERS.map(([f, k]) =>
     `<button type="button" data-f="${f}" class="${S.sgFilter === f ? "on" : ""}" aria-pressed="${S.sgFilter === f}">${esc(k.startsWith("f_") ? t(k) : k)}</button>`).join("");
   const byTime = (a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0);
@@ -1230,12 +1241,12 @@ function renderSetupBanner(sym) {
   const time = `${x.time.slice(8, 10)}.${x.time.slice(5, 7)} ${x.time.slice(11, 16)} UTC`;
   el.innerHTML = `<div class="shead"><span class="sside ${x.side}">${esc(t("setup_lbl").toUpperCase())} ${tfLabel(x.tf)} · ${esc(t("side_" + x.side))}</span>
       <button class="sx" id="setup-x" type="button" aria-label="${esc(t("close"))}">✕</button></div>
-    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : ""}${x.against ? `<div class="against">${esc(t("against"))}</div>` : ""}
-    <div class="when">${esc(time)} · ${esc(setupStatus(x))}${x.status === "open" ? " · " + esc(setupLeft(x)) : ""}</div>
+    ${x.type === "wave" ? `<div class="wavebadge">${esc(t("wave_badge"))}</div>` : x.type === "friend" ? `<div class="friendbadge">${esc(t("friend_badge"))}</div>` : ""}<div class="obstag">${esc(t("obs_tag"))}</div>${x.against ? `<div class="against">${esc(t("against"))}</div>` : ""}
+    <div class="when">${esc(time)} · ${esc(setupStatus(x))}${x.status === "open" || x.status === "pending" ? " · " + esc(setupLeft(x)) : ""}</div>
     <div class="slv"><span><span class="k">${esc(t("entry"))}</span>${N(fmt(x.entry))}</span><span><span class="k">${esc(t("stop"))}</span>${N(fmt(x.stop), "down")}</span>
       ${x.tp.length === 1 ? `<span><span class="k">${esc(t("target"))}</span>${N(fmt(x.tp[0]), "up")}</span>` :
       `<span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}</span><span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}</span>`}</div>
-    <div class="snow ${cls(r)}">${esc(t("su_now", { r: sgn(r) + "R" }))}</div><div class="snote">${esc(t("setups_not"))}</div>`;
+    ${x.status === "pending" ? "" : `<div class="snow ${cls(r)}">${esc(t("su_now", { r: sgn(r) + "R" }))}</div>`}<div class="snote">${esc(t("setups_not"))}</div>`;
 }
 
 /** The plan on the Signal tab: none (> 10% below the level), dim (3-10%: greyed, "plan if it breaks out"), full. */

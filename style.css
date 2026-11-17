@@ -584,7 +584,7 @@ html.lt360 .sggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sschip { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
 .sschip.open { color: var(--blue); background: rgba(var(--blue-rgb), 0.13); }
 .sschip.tp1 { color: var(--green); background: rgba(var(--green-rgb), 0.14); }
-.sschip.tp1_be, .sschip.expired, .sschip.time { color: var(--muted); background: rgba(var(--fg-rgb), 0.08); }
+.sschip.tp1_be, .sschip.expired, .sschip.time, .sschip.tp1_time { color: var(--muted); background: rgba(var(--fg-rgb), 0.08); }
 .sschip.tp2 { color: var(--on-green); background: var(--green); }
 .sschip.stop { color: var(--red); background: rgba(var(--red-rgb), 0.14); }
 .sgst .left { font-size: 13px; font-weight: 700; color: var(--gold); }
@@ -664,3 +664,7 @@ body.coin-open main { padding-bottom: calc(var(--sa-b) + 24px); }
 .seg.six::-webkit-scrollbar { display: none; }
 .seg.six button { flex: 1 0 auto; min-width: 40px; padding: 10px 4px; font-size: 15px; }
 .testmode { margin: 0 0 8px; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.friendbadge { display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; color: var(--muted); background: rgba(var(--fg-rgb), 0.08); }
+.friendnote { margin: 12px 0 4px; padding-top: 10px; border-top: 1px dashed var(--line-2); font-size: 13px; color: var(--muted); }
+.sschip.pending { color: var(--blue); background: transparent; box-shadow: inset 0 0 0 1.5px rgba(var(--blue-rgb), 0.5); }
+.obstag { margin: 4px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); }
