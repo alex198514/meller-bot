@@ -13,7 +13,7 @@ const I18N = {
     sg_since: "С {d}", sg_7d: "За 7 дней", sg_n: "Сигналов", sg_closed: "Закрыто", sg_win: "Прибыльных", sg_avg: "Средний R",
     sg_tot: "Итого R", sg_few: "Мало данных, статистика копится.", f_all: "Все", f_open: "В работе", f_closed: "Закрытые",
     ss_open: "в работе", ss_tp1: "TP1 взят, стоп в безубыток", ss_tp1_be: "TP1 взят, закрыт в безубытке", ss_tp2: "TP2 взят",
-    ss_stop: "стоп", ss_expired: "закрыт по времени", ss_time: "закрыт по времени", sg_size: "Размер {n} USDT · маржа 5x {m} USDT (риск $50)",
+    ss_stop: "стоп", ss_expired: "закрыт по времени", ss_time: "закрыт по времени", sg_size: "Размер {n} USDT · маржа 5x {m} USDT (риск ${r}, тренировка)",
     sg_now: "Сейчас", sg_exit: "Выход", sg_empty: "Сейчас открытых сигналов нет. Сканер проверяет рынок каждый час в :35.",
     sg_latest: "Последние закрытые", sg_nomatch: "Нет сигналов по этому фильтру.", sg_more: "Показать ещё",
     slow_title: "Медленный бот (1D)", slow_sleep: "Спит: рынок медвежий, бот покупает только пробои вверх.",
@@ -66,7 +66,7 @@ const I18N = {
     rs_stop: "стоп", rs_be: "стоп в безубытке", rs_trail: "трейлинг", br_now: "сейчас",
     setups_title: "Интрадей-сигналы", setups_explain: "Интрадей-сигнал: закрытие 1H или 4H свечи выше максимума (LONG) или ниже " +
       "минимума (SHORT) предыдущих 20 свечей, объём свечи не меньше 1.5× среднего, свеча меньше 2.5 ATR. Стоп 1.5 ATR, TP1 +1.5R " +
-      "(закрыть половину, стоп в безубыток), TP2 +3R. Размер на риск $50 от $10 000. Максимум 24 часа в сделке: если за 24 часа " +
+      "(закрыть половину, стоп в безубыток), TP2 +3R. Размер позиции на риск $10 (тренировка), статистика в R. Максимум 24 часа в сделке: если за 24 часа " +
       "не сработал ни тейк, ни стоп, сигнал закрывается по рынку. Новая стратегия, статистика копится: результаты считаются " +
       "по 5-минутным свечам с комиссией 0.06% за круг.",
     setups_none: "Открытых сигналов нет. Сканер проверяет 1H и 4H свечи каждый час.", setups_more: "Показать все {n}", setups_less: "Свернуть",
@@ -80,6 +80,7 @@ const I18N = {
     su_now: "Сейчас {r}", su_until: "до {d}", rvol: "объём ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "Я вошёл", my_trades: "Мои сделки", bot_positions: "Позиции бота", f_entry: "Цена входа", f_stop: "Стоп",
     f_size: "Размер, USDT", f_save: "Сохранить", f_hint: "По умолчанию риск $50 (0.5% от $10,000), как у бота. Комиссии не учитываются.",
+    f_hint_sg: "По умолчанию риск ${r} (тренировка). Комиссии не учитываются.",
     f_bad: "Проверьте числа: стоп должен быть ниже входа, размер больше нуля.", my_none: "Открытых сделок нет. Нажмите «Я вошёл» на вкладке Сигнал.",
     closed_btn: "Закрыл", delete_btn: "Удалить", ask_exit: "Цена выхода {coin}:", ask_delete: "Удалить сделку {coin} без записи в историю?",
     to_stop: "до стопа", to_tp1: "до TP1", size: "размер", result: "Результат", my_entry: "мой вход", bot_entry: "вход бота", me: "я", bot: "бот",
@@ -104,7 +105,7 @@ const I18N = {
     sg_since: "Since {d}", sg_7d: "Last 7 days", sg_n: "Signals", sg_closed: "Closed", sg_win: "Win rate", sg_avg: "Avg R",
     sg_tot: "Total R", sg_few: "Not enough data yet, stats are still building.", f_all: "All", f_open: "Open", f_closed: "Closed",
     ss_open: "open", ss_tp1: "TP1 hit, stop at breakeven", ss_tp1_be: "TP1 hit, closed at breakeven", ss_tp2: "TP2 hit",
-    ss_stop: "stopped out", ss_expired: "closed on time", ss_time: "closed on time", sg_size: "Size {n} USDT · margin 5x {m} USDT ($50 risk)",
+    ss_stop: "stopped out", ss_expired: "closed on time", ss_time: "closed on time", sg_size: "Size {n} USDT · margin 5x {m} USDT (${r} risk, training)",
     sg_now: "Now", sg_exit: "Exit", sg_empty: "No open signals right now. The scanner checks the market every hour at :35.",
     sg_latest: "Latest closed", sg_nomatch: "No signals for this filter.", sg_more: "Show more",
     slow_title: "Slow bot (1D)", slow_sleep: "Asleep: the market is bearish, the bot only buys upside breakouts.",
@@ -157,7 +158,7 @@ const I18N = {
     rs_stop: "stop", rs_be: "breakeven stop", rs_trail: "trailing", br_now: "now",
     setups_title: "Intraday signals", setups_explain: "An intraday signal: a 1H or 4H candle closes above the high (LONG) or below " +
       "the low (SHORT) of the previous 20 candles, with volume at least 1.5× the average and a range under 2.5 ATR. Stop 1.5 ATR, " +
-      "TP1 +1.5R (close half, stop to breakeven), TP2 +3R. Sized for $50 risk on $10,000. At most 24 hours in the trade: if neither " +
+      "TP1 +1.5R (close half, stop to breakeven), TP2 +3R. Position size for $10 risk (training), stats in R. At most 24 hours in the trade: if neither " +
       "a take profit nor the stop is hit within 24 hours, the signal is closed at the market. A new strategy, stats are still " +
       "building: results are checked on 5-minute candles after a 0.06% round-trip fee.",
     setups_none: "No open signals. The scanner checks 1H and 4H candles every hour.", setups_more: "Show all {n}", setups_less: "Show less",
@@ -171,6 +172,7 @@ const I18N = {
     su_now: "Now {r}", su_until: "until {d}", rvol: "volume ×{x}", side_long: "LONG", side_short: "SHORT",
     i_entered: "I entered", my_trades: "My trades", bot_positions: "Bot positions", f_entry: "Entry price", f_stop: "Stop",
     f_size: "Size, USDT", f_save: "Save", f_hint: "Default risk $50 (0.5% of $10,000), like the bot. Fees are not included.",
+    f_hint_sg: "Default risk ${r} (training). Fees are not included.",
     f_bad: "Check the numbers: the stop must be below the entry and the size above zero.", my_none: "No open trades. Tap \u201cI entered\u201d on the Signal tab.",
     closed_btn: "Closed", delete_btn: "Delete", ask_exit: "Exit price for {coin}:", ask_delete: "Delete the {coin} trade without adding it to the history?",
     to_stop: "to stop", to_tp1: "to TP1", size: "size", result: "Result", my_entry: "my entry", bot_entry: "bot entry", me: "me", bot: "bot",
@@ -1157,6 +1159,10 @@ function sgLiveHtml(x) {
       <i class="dot ${mv >= 0 ? "up" : "down"}" style="left:${(100 * at).toFixed(1)}%"></i></div>`;
 }
 
+/** Training size: the signal's tracked size ($50 risk) scaled to the push risk ($10); stats stay in R. */
+const pushRisk = () => (SU().rules && SU().rules.push_risk_usd) || 10;
+const sgK = () => pushRisk() / ((SU().rules && SU().rules.risk_usd) || 50);
+
 function sgCard(x) {
   const pc = (p) => sgn(100 * (p / x.entry - 1), 1) + "%";
   const k = sgKey(x);
@@ -1172,7 +1178,7 @@ function sgCard(x) {
       ${x.tp.length === 1 ? `<span><span class="k">${esc(t("target"))}</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>` :
       `<span><span class="k">TP1</span>${N(fmt(x.tp[0]), "up")}<small class="num up">${pc(x.tp[0])}</small></span>
       <span><span class="k">TP2</span>${N(fmt(x.tp[1]), "up")}<small class="num up">${pc(x.tp[1])}</small></span>`}</div>
-    ${x.notional ? `<div class="sgsize">${esc(t("sg_size", { n: Math.round(x.notional).toLocaleString("en-US"), m: Math.round(x.margin).toLocaleString("en-US") }))}</div>` : ""}
+    ${x.notional ? `<div class="sgsize">${esc(t("sg_size", { n: Math.round(x.notional * sgK()).toLocaleString("en-US"), m: Math.round(x.margin * sgK()).toLocaleString("en-US"), r: pushRisk() }))}</div>` : ""}
     ${x.status === "pending" ? "" : `<div class="sglive" data-sgsym="${esc(x.symbol)}" data-sid="${esc(x.id)}">${sgLiveHtml(x)}</div>`}</li>`;
 }
 
@@ -1526,9 +1532,9 @@ function openSheet() {
     f.stop.value = fmtNum(x.stop);
     f.tp1.value = fmtNum(x.tp[0]);
     f.tp2.value = x.tp.length > 1 ? fmtNum(x.tp[1]) : "";
-    f.size.value = (x.notional || (50 / sgRisk(x)) * x.entry).toFixed(2);
+    f.size.value = ((pushRisk() / sgRisk(x)) * x.entry).toFixed(2);
     $("sheet-title").textContent = `${t("i_entered")}: ${S.bySym[sym].coin} ${t("side_" + x.side)} ${tfLabel(x.tf)}`;
-    $("sheet-hint").textContent = t("f_hint");
+    $("sheet-hint").textContent = t("f_hint_sg", { r: pushRisk() });
     $("sheet").hidden = false;
     return;
   }
